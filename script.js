@@ -172,11 +172,11 @@ function renderTracks() {
 
         // Update Content
         wrapper.innerHTML = `
-            <div class="vehicle" style="transform: scaleX(-1);">${team.vehicle}</div>
-            <div class="vehicle-label">
-                <div>${team.name}</div>
-                <div class="vehicle-score">${team.score} pts</div>
+            <div class="vehicle" style="transform: scaleX(-1);">
+                ${team.vehicle}
+                <div class="vehicle-score-badge">${team.score}</div>
             </div>
+            <div class="vehicle-label">${team.name}</div>
         `;
 
         // Add Z-Index based on score (leaders on top) + slight adjustment for overlapped cars
