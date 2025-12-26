@@ -118,19 +118,19 @@ function renderTracks() {
     // 2. Prepare/Calc Positions & Collision Handling
     const maxCurrentScore = Math.max(...state.teams.map(t => t.score), state.targetScore);
 
-    // Pre-calculate progress and sort primarily by progress, secondarily by score
+    // Pre-calculate progress and sort primarily by progress
     let vehicles = state.teams.map(team => {
         const rawPct = Math.min((team.score / maxCurrentScore), 1.0);
         return {
             ...team,
             rawPct: rawPct,
-            displayOffset: 0 // Will be calculated
+            displayOffset: 0
         };
     }).sort((a, b) => a.rawPct - b.rawPct);
 
     // Group close vehicles (visual collision detection)
-    // Threshold: 3% of track length is approx effective width of a car
-    const PROXIMITY_THRESHOLD = 0.035;
+    // Increased threshold to 6% of track length to prevent overlaps
+    const PROXIMITY_THRESHOLD = 0.06;
 
     const clusters = [];
     if (vehicles.length > 0) {
@@ -153,19 +153,14 @@ function renderTracks() {
     // Assign vertical offsets within clusters
     clusters.forEach(cluster => {
         if (cluster.length > 1) {
-            // Distribute: Center(0), Up(-1), Down(+1), Up(-2)...
-            // We want the leader of the pack (?) or just spread them.
-            // Let's spread from center out.
+            // Distribute: Center(0), Up(-75), Down(+75), Up(-150), Down(+150)...
             cluster.forEach((v, idx) => {
-                // Convert 0,1,2,3... to 0, -1, 1, -2, 2...
-                // Algorithm: if even -> positive, if odd -> negative (after 0)
-                // Actually simpler: 0, 50, -50, 100, -100
                 if (idx === 0) {
                     v.displayOffset = 0;
                 } else {
-                    const sign = (idx % 2 === 0) ? -1 : 1;
+                    const sign = (idx % 2 === 0) ? 1 : -1;
                     const magnitude = Math.ceil(idx / 2);
-                    v.displayOffset = sign * magnitude * 50; // 50px spread
+                    v.displayOffset = sign * magnitude * 85; // 85px spread for better visibility
                 }
             });
         }
@@ -173,7 +168,7 @@ function renderTracks() {
 
     // 3. Render
     vehicles.forEach(data => {
-        const team = state.teams.find(t => t.id === data.id); // Get ref to original state if needed, or use data
+        const team = state.teams.find(t => t.id === data.id);
         let wrapper = document.getElementById(`wrapper-${team.id}`);
 
         if (!wrapper) {
@@ -191,17 +186,21 @@ function renderTracks() {
         wrapper.style.top = `${yPct}%`;
         wrapper.style.marginTop = `${data.displayOffset}px`;
 
+        // DETECT IF VEHICLE IS IMAGE OR EMOJI
+        const isEmoji = !team.vehicle.includes('/') && team.vehicle.length < 5;
+        const vehicleMarkup = isEmoji
+            ? `<span style="display: inline-block; transform: scaleX(-1);">${team.vehicle}</span>`
+            : `<img src="${team.vehicle}" style="width: 80px; height: 50px; object-fit: contain; transform: scaleX(-1);">`;
+
         // Update Content
         wrapper.innerHTML = `
             <div class="vehicle">
-                <span style="display: inline-block; transform: scaleX(-1);">${team.vehicle}</span>
+                ${vehicleMarkup}
                 <div class="vehicle-score-badge">${team.score}</div>
             </div>
-            <!-- Removed vehicle-label as requested -->
         `;
 
-        // Z-Index: Ensure lower items (visually) are above higher items relative to page? 
-        // Or simply score-based. 
+        // Z-Index: Ensure vehicles further along are on top
         wrapper.style.zIndex = 100 + Math.floor(data.rawPct * 1000);
     });
 
