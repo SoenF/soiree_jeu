@@ -117,19 +117,14 @@ h2 {
 .vehicle-wrapper {
     position: absolute;
     transform: translate(-50%, -50%);
-    /* Center on the point */
     transition: left 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), margin 0.3s ease;
     z-index: 10;
     display: flex;
-    flex-direction: row;
-    /* Side by side to avoid hiding car below */
+    flex-direction: column;
     align-items: center;
     pointer-events: none;
-    /* Let clicks pass through if needed */
-    width: auto;
-    /* Allow auto width */
-    min-width: 150px;
-    /* Ensure space for label */
+    width: 100px;
+    /* Fixed width for centering */
 }
 
 .vehicle {
@@ -139,7 +134,8 @@ h2 {
     transition: transform 0.3s;
     user-select: none;
     cursor: grab;
-    flex-shrink: 0;
+    position: relative;
+    /* For badge positioning */
 }
 
 .vehicle:hover {
@@ -147,28 +143,31 @@ h2 {
     z-index: 100;
 }
 
-.vehicle-label {
-    margin-left: 10px;
-    /* Spacing from car */
-    margin-top: 0;
-    background: rgba(15, 23, 42, 0.85);
-    /* More opaque */
-    padding: 6px 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-align: left;
-    color: var(--text-light);
-    white-space: nowrap;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    pointer-events: auto;
-    backdrop-filter: blur(4px);
+.vehicle-score-badge {
+    position: absolute;
+    top: -5px;
+    right: -10px;
+    background: var(--primary);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 10px;
+    border: 2px solid var(--bg-dark);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    z-index: 20;
 }
 
-.vehicle-score {
-    color: var(--primary);
+.vehicle-label {
+    margin-top: 2px;
     font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-light);
+    white-space: nowrap;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.9);
+    /* No box background to prevent hiding others */
+    overflow: visible;
 }
 
 /* Removing old linear track styles */
