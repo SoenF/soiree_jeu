@@ -78,103 +78,99 @@ h2 {
     letter-spacing: 1px;
 }
 
-/* Track Styles */
+/* Track Styles - Sinuous */
 .tracks-list {
+    position: relative;
+    width: 100%;
+    min-height: 300px;
+    /* Space for the winding road */
+    margin-top: 2rem;
+    padding: 0;
+    overflow: visible;
+    /* Allow tooltips slightly out? */
+}
+
+/* The SVG Background */
+#race-track-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.3));
+}
+
+.race-path-border {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.3);
+    stroke-width: 40px;
+    stroke-linecap: round;
+}
+
+.race-path-line {
+    fill: none;
+    stroke: rgba(0, 0, 0, 0.5);
+    stroke-width: 36px;
+    stroke-linecap: round;
+    stroke-dasharray: 20, 20;
+}
+
+/* Vehicles on the path */
+.vehicle-wrapper {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    /* Center on the point */
+    transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    z-index: 10;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-    margin-top: 4rem;
-    /* Increased gap for header */
-}
-
-.track-row {
-    position: relative;
-    padding-bottom: 1rem;
-}
-
-.track-lane {
-    height: 60px;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 30px;
-    position: relative;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    margin-top: 2rem;
-}
-
-.track-lane::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255, 255, 255, 0.1) 20px, rgba(255, 255, 255, 0.1) 40px);
-    transform: translateY(-50%);
-}
-
-.vehicle-container {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    transform: translateY(-50%);
-    transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 10;
+    align-items: center;
+    pointer-events: none;
+    /* Let clicks pass through if needed */
+    width: 80px;
+    /* Constraint width for labels */
 }
 
 .vehicle {
     font-size: 3rem;
     line-height: 1;
-    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+    filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.5));
+    transition: transform 0.3s;
     user-select: none;
-    cursor: default;
-    transform: scaleX(-1);
-    /* Flip if needed to face right, usually emojis face left/right depending on OS */
+    cursor: grab;
 }
 
-/* Flip cars/vehicles that face left by default on some systems, optional */
-.vehicle.flip {
-    transform: scaleX(1);
+.vehicle:hover {
+    transform: scale(1.2) rotate(-5deg);
+    z-index: 100;
 }
 
-.track-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    position: absolute;
-    top: -2.2rem;
-    width: 100%;
-}
-
-.team-name-tag {
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.team-avatars {
-    display: flex;
-    margin-left: 0.5rem;
-}
-
-.mini-avatar {
-    width: 24px;
-    height: 24px;
-    border-radius: 50%;
-    border: 2px solid var(--bg-dark);
-    margin-left: -8px;
-    background: var(--primary);
-}
-
-.score-display {
-    font-weight: 800;
-    font-size: 1.5rem;
-    color: var(--primary);
-    background: rgba(99, 102, 241, 0.1);
-    padding: 2px 10px;
+.vehicle-label {
+    margin-top: 5px;
+    background: rgba(30, 41, 59, 0.9);
+    padding: 4px 8px;
     border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--text-light);
+    white-space: nowrap;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    pointer-events: auto;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.vehicle-score {
+    color: var(--primary);
+    font-size: 0.85rem;
+}
+
+/* Removing old linear track styles */
+.track-row,
+.track-lane,
+.track-info {
+    display: none;
 }
 
 /* Controls Styles */

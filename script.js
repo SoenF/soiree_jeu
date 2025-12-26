@@ -87,6 +87,7 @@ function loadState() {
 }
 
 // --- Rendering ---
+// --- Rendering ---
 function renderApp() {
     renderTracks();
     renderControls();
@@ -94,36 +95,75 @@ function renderApp() {
 
 function renderTracks() {
     const container = document.getElementById('tracks-list');
-    container.innerHTML = '';
 
-    // Sort teams by score for visual ranking (optional, here we keep fixed lanes)
-    // For this design, let's keep fixed lanes but highlight the leader
+    // 1. Setup SVG Track if not present
+    let svg = document.getElementById('race-track-svg');
+    const pathDef = "M 50,250 C 200,50 400,350 700,150 S 1100,250 1200,100"; // Sinuous winding path
 
-    // Find max score to adjust track scaling if necessary
+    if (!svg) {
+        container.innerHTML = `
+            <svg id="race-track-svg" viewBox="0 0 1250 400" preserveAspectRatio="xMidYMid meet">
+                <!-- Outer Glow/Border -->
+                <path d="${pathDef}" class="race-path-border" />
+                <!-- Inner Road -->
+                <path id="race-path-element" d="${pathDef}" class="race-path-line" />
+            </svg>
+        `;
+        svg = document.getElementById('race-track-svg');
+    }
+
+    const pathEl = document.getElementById('race-path-element');
+    const totalLen = pathEl.getTotalLength();
+
+    // 2. Render/Update Vehicles
+
+    // Find max score
     const maxCurrentScore = Math.max(...state.teams.map(t => t.score), state.targetScore);
 
     state.teams.forEach(team => {
-        const percentage = Math.min((team.score / maxCurrentScore) * 90, 92); // Max 92% to avoid going out of track
+        let wrapper = document.getElementById(`wrapper-${team.id}`);
 
-        const trackRow = document.createElement('div');
-        trackRow.className = 'track-row';
-        trackRow.innerHTML = `
-            <div class="track-info">
-                <div class="team-name-tag">
-                    ${team.name}
-                    <div class="team-avatars">
-                        ${team.players.map(p => `<img src="${p.avatar}" class="mini-avatar" title="${p.name}">`).join('')}
-                    </div>
-                </div>
-                <div class="score-display" id="score-val-${team.id}">${team.score} pts</div>
-            </div>
-            <div class="track-lane">
-                <div class="vehicle-container" style="left: calc(${percentage}% + 5px)">
-                    <div class="vehicle" id="vehicle-${team.id}">${team.vehicle}</div>
-                </div>
+        if (!wrapper) {
+            wrapper = document.createElement('div');
+            wrapper.id = `wrapper-${team.id}`;
+            wrapper.className = 'vehicle-wrapper';
+            container.appendChild(wrapper); // Add to container, absolute on top of SVG
+        }
+
+        // Calculate Position along path
+        // Cap at 0.98 to stop just before end
+        const rawPct = Math.min((team.score / maxCurrentScore), 1.0);
+        // We actually want a bit of a buffer at start? No, 0 is start.
+
+        const point = pathEl.getPointAtLength(rawPct * totalLen);
+
+        // Convert SVG ViewBox coordinates to % to be responsive
+        // ViewBox is 1250 x 500
+        const xPct = (point.x / 1250) * 100;
+        const yPct = (point.y / 400) * 100;
+
+        wrapper.style.left = `${xPct}%`;
+        wrapper.style.top = `${yPct}%`;
+
+        // Update Content
+        wrapper.innerHTML = `
+            <div class="vehicle" style="transform: scaleX(-1);">${team.vehicle}</div>
+            <div class="vehicle-label">
+                <div>${team.name}</div>
+                <div class="vehicle-score">${team.score} pts</div>
             </div>
         `;
-        container.appendChild(trackRow);
+
+        // Add Z-Index based on score (leaders on top)
+        wrapper.style.zIndex = 10 + team.score;
+    });
+
+    // Cleanup removed teams
+    const teamIds = state.teams.map(t => `wrapper-${t.id}`);
+    Array.from(container.querySelectorAll('.vehicle-wrapper')).forEach(el => {
+        if (!teamIds.includes(el.id)) {
+            el.remove();
+        }
     });
 }
 
