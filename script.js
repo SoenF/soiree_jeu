@@ -172,8 +172,8 @@ function renderTracks() {
 
         // Update Content
         wrapper.innerHTML = `
-            <div class="vehicle" style="transform: scaleX(-1);">
-                ${team.vehicle}
+            <div class="vehicle">
+                <span style="display: inline-block; transform: scaleX(-1);">${team.vehicle}</span>
                 <div class="vehicle-score-badge">${team.score}</div>
             </div>
             <div class="vehicle-label">${team.name}</div>
