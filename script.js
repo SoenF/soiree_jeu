@@ -109,13 +109,33 @@ function renderTracks() {
                 <path id="race-path-element" d="${pathDef}" class="race-path-line" />
             </svg>
         `;
+        // Inject decorations (Trees) once
+        const trees = ['🌲', '🌳', '🌱', '🍄', '🪵'];
+        for (let i = 0; i < 20; i++) {
+            const deco = document.createElement('div');
+            deco.className = 'track-decoration';
+            deco.innerText = trees[Math.floor(Math.random() * trees.length)];
+            // Random posh
+            deco.style.left = Math.random() * 100 + '%';
+            deco.style.top = Math.random() * 100 + '%';
+            // Slight randomness in size
+            deco.style.fontSize = (2 + Math.random()) + 'rem';
+            container.appendChild(deco);
+        }
         svg = document.getElementById('race-track-svg');
     }
 
     const pathEl = document.getElementById('race-path-element');
     const totalLen = pathEl.getTotalLength();
 
-    // 2. Render/Update Vehicles
+    // 2. Prepare Collision Handling (Grouping by score)
+    const scoreGroups = {};
+    state.teams.forEach(t => {
+        if (!scoreGroups[t.score]) scoreGroups[t.score] = [];
+        scoreGroups[t.score].push(t.id);
+    });
+
+    // 3. Render/Update Vehicles
 
     // Find max score
     const maxCurrentScore = Math.max(...state.teams.map(t => t.score), state.targetScore);
@@ -142,8 +162,26 @@ function renderTracks() {
         const xPct = (point.x / 1250) * 100;
         const yPct = (point.y / 400) * 100;
 
+        // Handle Collisions (same score)
+        const group = scoreGroups[team.score];
+        const idxInGroup = group.indexOf(team.id);
+
+        let offsetY = 0;
+        if (group.length > 1) {
+            // Offset logic: 0 -> 0, 1 -> -40, 2 -> +40, 3 -> -80, etc.
+            const spread = 50; // px
+            // Map index 0,1,2,3 -> 0, -1, 1, -2, 2...
+            const direction = idxInGroup % 2 === 0 ? 1 : -1;
+            const magnitude = Math.ceil(idxInGroup / 2);
+            // First item (0) stays center, others spread
+            if (idxInGroup > 0) {
+                offsetY = direction * magnitude * spread;
+            }
+        }
+
         wrapper.style.left = `${xPct}%`;
         wrapper.style.top = `${yPct}%`;
+        wrapper.style.marginTop = `${offsetY}px`; // Apply vertical shift
 
         // Update Content
         wrapper.innerHTML = `
@@ -154,8 +192,8 @@ function renderTracks() {
             </div>
         `;
 
-        // Add Z-Index based on score (leaders on top)
-        wrapper.style.zIndex = 10 + team.score;
+        // Add Z-Index based on score (leaders on top) + slight adjustment for overlapped cars
+        wrapper.style.zIndex = 100 + team.score + idxInGroup;
     });
 
     // Cleanup removed teams

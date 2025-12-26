@@ -113,12 +113,23 @@ h2 {
     stroke-dasharray: 20, 20;
 }
 
+/* Track Decorations */
+.track-decoration {
+    position: absolute;
+    font-size: 2.5rem;
+    pointer-events: none;
+    z-index: 1;
+    /* Above borders, below cars */
+    user-select: none;
+    filter: drop-shadow(0 4px 4px rgba(0, 0, 0, 0.3));
+}
+
 /* Vehicles on the path */
 .vehicle-wrapper {
     position: absolute;
     transform: translate(-50%, -50%);
     /* Center on the point */
-    transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: left 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), margin 0.3s ease;
     z-index: 10;
     display: flex;
     flex-direction: column;
