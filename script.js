@@ -218,10 +218,18 @@ function renderControls() {
     container.innerHTML = '';
 
     state.teams.forEach(team => {
+        const isEmoji = !team.vehicle.includes('/') && team.vehicle.length < 5;
+        const vehicleMarkup = isEmoji
+            ? `<div class="control-vehicle-icon">${team.vehicle}</div>`
+            : `<div class="control-vehicle-icon"><img src="${team.vehicle}"></div>`;
+
         const card = document.createElement('div');
         card.className = 'team-control-card';
         card.innerHTML = `
-            <div class="control-team-name">${team.name} <span style="font-size: 1.5rem; margin-left: auto;">${team.vehicle}</span></div>
+            <div class="control-team-header">
+                <div class="control-team-name">${team.name}</div>
+                ${vehicleMarkup}
+            </div>
             <div class="score-buttons">
                 <button class="btn-point" onclick="addPoints(${team.id}, 1)">+1</button>
                 <button class="btn-point" onclick="addPoints(${team.id}, 2)">+2</button>

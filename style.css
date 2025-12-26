@@ -190,16 +190,39 @@ h2 {
 .team-control-card {
     background: rgba(255, 255, 255, 0.03);
     border-radius: var(--radius);
-    padding: 1.25rem;
+    padding: 1.5rem;
     border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+}
+
+.control-team-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
 }
 
 .control-team-name {
-    font-weight: 600;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: var(--text-light);
+    flex-grow: 1;
+}
+
+.control-vehicle-icon {
+    font-size: 4rem;
+    /* Much larger emoji */
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.control-vehicle-icon img {
+    width: 80px;
+    /* Much larger image icon */
+    height: 50px;
+    object-fit: contain;
 }
 
 .score-buttons {
