@@ -23,7 +23,7 @@
 
 body {
     background-color: var(--bg-dark);
-    background-image: 
+    background-image:
         radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 40%),
         radial-gradient(circle at 80% 80%, rgba(236, 72, 153, 0.15) 0%, transparent 40%);
     color: var(--text-light);
@@ -83,6 +83,8 @@ h2 {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    margin-top: 4rem;
+    /* Increased gap for header */
 }
 
 .track-row {
@@ -107,7 +109,7 @@ h2 {
     left: 0;
     right: 0;
     height: 2px;
-    background: repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255,255,255,0.1) 20px, rgba(255,255,255,0.1) 40px);
+    background: repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255, 255, 255, 0.1) 20px, rgba(255, 255, 255, 0.1) 40px);
     transform: translateY(-50%);
 }
 
@@ -121,10 +123,18 @@ h2 {
 }
 
 .vehicle {
-    width: 60px;
-    height: 40px;
-    object-fit: contain;
-    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3));
+    font-size: 3rem;
+    line-height: 1;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+    user-select: none;
+    cursor: default;
+    transform: scaleX(-1);
+    /* Flip if needed to face right, usually emojis face left/right depending on OS */
+}
+
+/* Flip cars/vehicles that face left by default on some systems, optional */
+.vehicle.flip {
+    transform: scaleX(1);
 }
 
 .track-info {
@@ -215,7 +225,7 @@ h2 {
 .btn-custom {
     flex: 1 0 100%;
     margin-top: 0.5rem;
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border);
     color: var(--text-light);
 }
@@ -231,11 +241,31 @@ h2 {
     text-align: center;
 }
 
-.btn.primary { background: var(--primary); color: white; }
-.btn.secondary { background: rgba(255,255,255,0.05); color: var(--text-light); border: 1px solid var(--border); }
-.btn.danger { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.2); }
-.btn.success { background: var(--success); color: white; }
-.btn.full-width { width: 100%; }
+.btn.primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn.secondary {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-light);
+    border: 1px solid var(--border);
+}
+
+.btn.danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.btn.success {
+    background: var(--success);
+    color: white;
+}
+
+.btn.full-width {
+    width: 100%;
+}
 
 .btn:hover {
     filter: brightness(1.1);
@@ -251,7 +281,7 @@ h2 {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.8);
+    background-color: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px);
 }
 
@@ -281,7 +311,7 @@ h2 {
 
 /* Setup Items */
 .setup-team-item {
-    background: rgba(255,255,255,0.03);
+    background: rgba(255, 255, 255, 0.03);
     padding: 1rem;
     border-radius: 12px;
     margin-bottom: 1rem;
@@ -295,7 +325,7 @@ h2 {
 }
 
 .setup-input {
-    background: rgba(0,0,0,0.2);
+    background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 0.5rem 0.75rem;
@@ -316,7 +346,7 @@ h2 {
 }
 
 .vehicle-select {
-    background: rgba(0,0,0,0.2);
+    background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 0.5rem;
@@ -325,9 +355,17 @@ h2 {
 
 /* Animations */
 @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 .pulse {
@@ -339,17 +377,16 @@ h2 {
     .header-actions {
         flex-direction: column;
     }
-    
+
     .logo {
         font-size: 1.5rem;
     }
-    
+
     .track-lane {
         height: 50px;
     }
-    
+
     .vehicle {
-        width: 50px;
-        height: 35px;
+        font-size: 2rem;
     }
 }

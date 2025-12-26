@@ -3,9 +3,36 @@
 // --- Constants & State ---
 const STORAGE_KEY = 'racepoint_game_data';
 const VEHICLES = [
-    { id: 'car_red', path: 'assets/vehicles/car_red.png' },
-    { id: 'car_blue', path: 'assets/vehicles/car_blue.png' },
-    { id: 'rocket', path: 'assets/vehicles/rocket.png' }
+    { id: 'Course', icon: '🏎️' },
+    { id: 'Taxi', icon: '🚕' },
+    { id: 'Police', icon: '🚓' },
+    { id: 'Ambulance', icon: '🚑' },
+    { id: 'Pompier', icon: '🚒' },
+    { id: 'Bus', icon: '🚌' },
+    { id: 'Camion', icon: '🚚' },
+    { id: 'Tracteur', icon: '🚜' },
+    { id: 'Scooter', icon: '🛵' },
+    { id: 'Moto', icon: '🏍️' },
+    { id: 'Vélo', icon: '🚲' },
+    { id: 'Train', icon: '🚂' },
+    { id: 'Avion', icon: '✈️' },
+    { id: 'Fusée', icon: '🚀' },
+    { id: 'Soucoupe', icon: '🛸' },
+    { id: 'Hélico', icon: '🚁' },
+    { id: 'Canoë', icon: '🛶' },
+    { id: 'Voilier', icon: '⛵' },
+    { id: 'Bateau', icon: '🚤' },
+    { id: 'Paquebot', icon: '🛳️' },
+    { id: 'Licorne', icon: '🦄' },
+    { id: 'Dragon', icon: '🐉' },
+    { id: 'T-Rex', icon: '🦖' },
+    { id: 'Père Noël', icon: '🎅' },
+    { id: 'Fantôme', icon: '👻' },
+    { id: 'Clown', icon: '🤡' },
+    { id: 'Robot', icon: '🤖' },
+    { id: 'Caca', icon: '💩' },
+    { id: 'Fête', icon: '🥳' },
+    { id: 'Champagne', icon: '🍾' }
 ];
 
 let state = {
@@ -14,7 +41,7 @@ let state = {
             id: 1,
             name: 'Équipe Alpha',
             score: 0,
-            vehicle: 'assets/vehicles/car_red.png',
+            vehicle: '🏎️',
             players: [
                 { name: 'Alice', avatar: 'assets/players/default.png' },
                 { name: 'Bob', avatar: 'assets/players/default.png' }
@@ -24,7 +51,7 @@ let state = {
             id: 2,
             name: 'Équipe Beta',
             score: 0,
-            vehicle: 'assets/vehicles/car_blue.png',
+            vehicle: '🚀',
             players: [
                 { name: 'Charlie', avatar: 'assets/players/default.png' }
             ]
@@ -36,6 +63,13 @@ let state = {
 // --- Initialization ---
 function init() {
     loadState();
+    // Validate vehicles in state (if loaded from older version with paths)
+    state.teams.forEach(t => {
+        if (t.vehicle.includes('/') || t.vehicle.includes('.png')) {
+            t.vehicle = '🏎️'; // Reset to default if old path format
+        }
+    });
+
     renderApp();
     setupEventListeners();
 }
@@ -61,16 +95,16 @@ function renderApp() {
 function renderTracks() {
     const container = document.getElementById('tracks-list');
     container.innerHTML = '';
-    
+
     // Sort teams by score for visual ranking (optional, here we keep fixed lanes)
     // For this design, let's keep fixed lanes but highlight the leader
-    
+
     // Find max score to adjust track scaling if necessary
     const maxCurrentScore = Math.max(...state.teams.map(t => t.score), state.targetScore);
-    
+
     state.teams.forEach(team => {
         const percentage = Math.min((team.score / maxCurrentScore) * 90, 92); // Max 92% to avoid going out of track
-        
+
         const trackRow = document.createElement('div');
         trackRow.className = 'track-row';
         trackRow.innerHTML = `
@@ -85,7 +119,7 @@ function renderTracks() {
             </div>
             <div class="track-lane">
                 <div class="vehicle-container" style="left: calc(${percentage}% + 5px)">
-                    <img src="${team.vehicle}" class="vehicle" id="vehicle-${team.id}">
+                    <div class="vehicle" id="vehicle-${team.id}">${team.vehicle}</div>
                 </div>
             </div>
         `;
@@ -96,12 +130,12 @@ function renderTracks() {
 function renderControls() {
     const container = document.getElementById('teams-controls');
     container.innerHTML = '';
-    
+
     state.teams.forEach(team => {
         const card = document.createElement('div');
         card.className = 'team-control-card';
         card.innerHTML = `
-            <div class="control-team-name">${team.name}</div>
+            <div class="control-team-name">${team.name} <span style="font-size: 1.5rem; margin-left: auto;">${team.vehicle}</span></div>
             <div class="score-buttons">
                 <button class="btn-point" onclick="addPoints(${team.id}, 1)">+1</button>
                 <button class="btn-point" onclick="addPoints(${team.id}, 2)">+2</button>
@@ -114,18 +148,18 @@ function renderControls() {
 }
 
 // --- Actions ---
-window.addPoints = function(teamId, points) {
+window.addPoints = function (teamId, points) {
     const team = state.teams.find(t => t.id === teamId);
     if (team) {
         team.score += points;
         if (team.score < 0) team.score = 0;
-        
+
         saveState();
         updateUI(teamId);
     }
 };
 
-window.customPoints = function(teamId) {
+window.customPoints = function (teamId) {
     const pts = prompt("Nombre de points à ajouter (négatif possible) :");
     const num = parseInt(pts);
     if (!isNaN(num)) {
@@ -137,13 +171,13 @@ function updateUI(teamId) {
     const team = state.teams.find(t => t.id === teamId);
     const scoreEl = document.getElementById(`score-val-${teamId}`);
     const vehicleEl = document.getElementById(`vehicle-${teamId}`);
-    
+
     if (scoreEl) {
         scoreEl.innerText = `${team.score} pts`;
         scoreEl.classList.add('pulse');
         setTimeout(() => scoreEl.classList.remove('pulse'), 300);
     }
-    
+
     // Refresh all track positions because max score might have changed
     renderTracks();
 }
@@ -170,7 +204,7 @@ function closeSetup() {
 function renderSetupList() {
     const container = document.getElementById('setup-teams-list');
     container.innerHTML = '';
-    
+
     state.teams.forEach((team, tIdx) => {
         const item = document.createElement('div');
         item.className = 'setup-team-item';
@@ -178,7 +212,7 @@ function renderSetupList() {
             <div class="setup-team-header">
                 <input type="text" value="${team.name}" class="setup-input" onchange="updateTeamName(${tIdx}, this.value)">
                 <select class="vehicle-select" onchange="updateTeamVehicle(${tIdx}, this.value)">
-                    ${VEHICLES.map(v => `<option value="${v.path}" ${team.vehicle === v.path ? 'selected' : ''}>${v.id}</option>`).join('')}
+                    ${VEHICLES.map(v => `<option value="${v.icon}" ${team.vehicle === v.icon ? 'selected' : ''}>${v.icon} ${v.id}</option>`).join('')}
                 </select>
                 <button class="btn danger" onclick="removeTeam(${tIdx})">&times;</button>
             </div>
@@ -197,7 +231,10 @@ function renderSetupList() {
 }
 
 window.updateTeamName = (idx, val) => state.teams[idx].name = val;
-window.updateTeamVehicle = (idx, val) => state.teams[idx].vehicle = val;
+window.updateTeamVehicle = (idx, val) => {
+    state.teams[idx].vehicle = val;
+    renderApp(); // Live update
+};
 window.removeTeam = (idx) => {
     state.teams.splice(idx, 1);
     renderSetupList();
@@ -207,7 +244,7 @@ window.addTeam = () => {
         id: Date.now(),
         name: `Équipe ${state.teams.length + 1}`,
         score: 0,
-        vehicle: VEHICLES[0].path,
+        vehicle: VEHICLES[0].icon,
         players: []
     });
     renderSetupList();
@@ -232,7 +269,7 @@ function setupEventListeners() {
         closeSetup();
     });
     document.getElementById('reset-btn').addEventListener('click', resetScores);
-    
+
     window.onclick = (event) => {
         if (event.target == document.getElementById('setup-modal')) {
             closeSetup();
