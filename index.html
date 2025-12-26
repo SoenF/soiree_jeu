@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RacePoint - Score Master</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <meta name="description" content="Gérez les scores de vos soirées jeux avec RacePoint. Une course palpitante vers la victoire !">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1 class="logo">RACE<span>POINT</span></h1>
+            <div class="header-actions">
+                <button id="setup-btn" class="btn secondary">Configuration</button>
+                <button id="reset-btn" class="btn danger">Réinitialiser Scores</button>
+            </div>
+        </header>
+
+        <main>
+            <!-- Race Track Section -->
+            <section id="race-container" class="glass-panel">
+                <div class="track-header">
+                    <h2>Classement en direct</h2>
+                </div>
+                <div id="tracks-list" class="tracks-list">
+                    <!-- Tracks will be injected here by JS -->
+                </div>
+            </section>
+
+            <!-- Controls Section -->
+            <section id="controls-container" class="glass-panel">
+                <h2>Attribuer des points</h2>
+                <div id="teams-controls" class="teams-grid">
+                    <!-- Team controls will be injected here by JS -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Setup Modal -->
+        <div id="setup-modal" class="modal">
+            <div class="modal-content glass-panel">
+                <div class="modal-header">
+                    <h2>Configuration des équipes</h2>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="setup-teams-list" class="setup-teams-list">
+                        <!-- Setup items injected here -->
+                    </div>
+                    <button id="add-team-btn" class="btn primary full-width">Ajouter une équipe</button>
+                </div>
+                <div class="modal-footer">
+                    <button id="save-setup-btn" class="btn success full-width">Enregistrer et Jouer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
