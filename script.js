@@ -115,60 +115,81 @@ function renderTracks() {
     const pathEl = document.getElementById('race-path-element');
     const totalLen = pathEl.getTotalLength();
 
-    // 2. Prepare Collision Handling (Grouping by score)
-    const scoreGroups = {};
-    state.teams.forEach(t => {
-        if (!scoreGroups[t.score]) scoreGroups[t.score] = [];
-        scoreGroups[t.score].push(t.id);
-    });
-
-    // 3. Render/Update Vehicles
-
-    // Find max score
+    // 2. Prepare/Calc Positions & Collision Handling
     const maxCurrentScore = Math.max(...state.teams.map(t => t.score), state.targetScore);
 
-    state.teams.forEach(team => {
+    // Pre-calculate progress and sort primarily by progress, secondarily by score
+    let vehicles = state.teams.map(team => {
+        const rawPct = Math.min((team.score / maxCurrentScore), 1.0);
+        return {
+            ...team,
+            rawPct: rawPct,
+            displayOffset: 0 // Will be calculated
+        };
+    }).sort((a, b) => a.rawPct - b.rawPct);
+
+    // Group close vehicles (visual collision detection)
+    // Threshold: 3% of track length is approx effective width of a car
+    const PROXIMITY_THRESHOLD = 0.035;
+
+    const clusters = [];
+    if (vehicles.length > 0) {
+        let currentCluster = [vehicles[0]];
+        clusters.push(currentCluster);
+
+        for (let i = 1; i < vehicles.length; i++) {
+            const prev = vehicles[i - 1];
+            const curr = vehicles[i];
+
+            if ((curr.rawPct - prev.rawPct) < PROXIMITY_THRESHOLD) {
+                currentCluster.push(curr);
+            } else {
+                currentCluster = [curr];
+                clusters.push(currentCluster);
+            }
+        }
+    }
+
+    // Assign vertical offsets within clusters
+    clusters.forEach(cluster => {
+        if (cluster.length > 1) {
+            // Distribute: Center(0), Up(-1), Down(+1), Up(-2)...
+            // We want the leader of the pack (?) or just spread them.
+            // Let's spread from center out.
+            cluster.forEach((v, idx) => {
+                // Convert 0,1,2,3... to 0, -1, 1, -2, 2...
+                // Algorithm: if even -> positive, if odd -> negative (after 0)
+                // Actually simpler: 0, 50, -50, 100, -100
+                if (idx === 0) {
+                    v.displayOffset = 0;
+                } else {
+                    const sign = (idx % 2 === 0) ? -1 : 1;
+                    const magnitude = Math.ceil(idx / 2);
+                    v.displayOffset = sign * magnitude * 50; // 50px spread
+                }
+            });
+        }
+    });
+
+    // 3. Render
+    vehicles.forEach(data => {
+        const team = state.teams.find(t => t.id === data.id); // Get ref to original state if needed, or use data
         let wrapper = document.getElementById(`wrapper-${team.id}`);
 
         if (!wrapper) {
             wrapper = document.createElement('div');
             wrapper.id = `wrapper-${team.id}`;
             wrapper.className = 'vehicle-wrapper';
-            container.appendChild(wrapper); // Add to container, absolute on top of SVG
+            container.appendChild(wrapper);
         }
 
-        // Calculate Position along path
-        // Cap at 0.98 to stop just before end
-        const rawPct = Math.min((team.score / maxCurrentScore), 1.0);
-        // We actually want a bit of a buffer at start? No, 0 is start.
-
-        const point = pathEl.getPointAtLength(rawPct * totalLen);
-
-        // Convert SVG ViewBox coordinates to % to be responsive
-        // ViewBox is 1250 x 500
+        const point = pathEl.getPointAtLength(data.rawPct * totalLen);
         const xPct = (point.x / 1250) * 100;
         const yPct = (point.y / 400) * 100;
 
-        // Handle Collisions (same score)
-        const group = scoreGroups[team.score];
-        const idxInGroup = group.indexOf(team.id);
-
-        let offsetY = 0;
-        if (group.length > 1) {
-            // Offset logic: 0 -> 0, 1 -> -40, 2 -> +40, 3 -> -80, etc.
-            const spread = 50; // px
-            // Map index 0,1,2,3 -> 0, -1, 1, -2, 2...
-            const direction = idxInGroup % 2 === 0 ? 1 : -1;
-            const magnitude = Math.ceil(idxInGroup / 2);
-            // First item (0) stays center, others spread
-            if (idxInGroup > 0) {
-                offsetY = direction * magnitude * spread;
-            }
-        }
-
         wrapper.style.left = `${xPct}%`;
         wrapper.style.top = `${yPct}%`;
-        wrapper.style.marginTop = `${offsetY}px`; // Apply vertical shift
+        wrapper.style.marginTop = `${data.displayOffset}px`;
 
         // Update Content
         wrapper.innerHTML = `
@@ -176,10 +197,12 @@ function renderTracks() {
                 <span style="display: inline-block; transform: scaleX(-1);">${team.vehicle}</span>
                 <div class="vehicle-score-badge">${team.score}</div>
             </div>
+            <!-- Removed vehicle-label as requested -->
         `;
 
-        // Add Z-Index based on score (leaders on top) + slight adjustment for overlapped cars
-        wrapper.style.zIndex = 100 + team.score + idxInGroup;
+        // Z-Index: Ensure lower items (visually) are above higher items relative to page? 
+        // Or simply score-based. 
+        wrapper.style.zIndex = 100 + Math.floor(data.rawPct * 1000);
     });
 
     // Cleanup removed teams
