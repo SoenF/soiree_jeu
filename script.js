@@ -109,19 +109,6 @@ function renderTracks() {
                 <path id="race-path-element" d="${pathDef}" class="race-path-line" />
             </svg>
         `;
-        // Inject decorations (Trees) once
-        const trees = ['🌲', '🌳', '🌱', '🍄', '🪵'];
-        for (let i = 0; i < 20; i++) {
-            const deco = document.createElement('div');
-            deco.className = 'track-decoration';
-            deco.innerText = trees[Math.floor(Math.random() * trees.length)];
-            // Random posh
-            deco.style.left = Math.random() * 100 + '%';
-            deco.style.top = Math.random() * 100 + '%';
-            // Slight randomness in size
-            deco.style.fontSize = (2 + Math.random()) + 'rem';
-            container.appendChild(deco);
-        }
         svg = document.getElementById('race-track-svg');
     }
 
