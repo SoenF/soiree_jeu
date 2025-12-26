@@ -176,7 +176,6 @@ function renderTracks() {
                 <span style="display: inline-block; transform: scaleX(-1);">${team.vehicle}</span>
                 <div class="vehicle-score-badge">${team.score}</div>
             </div>
-            <div class="vehicle-label">${team.name}</div>
         `;
 
         // Add Z-Index based on score (leaders on top) + slight adjustment for overlapped cars
