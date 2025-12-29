@@ -203,18 +203,20 @@ function generateTeams(numTeams) {
     state.currentGame = { name: '', teams: teams };
     renderTempTeams();
 }
-// --- DRAG AND DROP & MOBILE TAP ---
+// --- DRAG AND DROP & MOBILE TAP & TOUCH ---
 let selectedPlayerId = null;
+let touchDragItem = null; // { pid, element, ghost, offsetX, offsetY }
 
 function renderTempTeams() {
     const teams = state.currentGame.teams;
     const container = document.getElementById('temp-teams-container');
     container.innerHTML = teams.map(t => `
-        <div class="team-preview" 
+        <div class="team-preview drop-zone" 
              ondragover="allowDrop(event, this)" 
              ondrop="dropPlayer(event, '${t.id}')"
              ondragleave="leaveDrop(this)"
-             onclick="handleTeamClick('${t.id}')">
+             onclick="handleTeamClick('${t.id}')"
+             data-team-id="${t.id}">
             <h3>${t.name}</h3>
             <div class="team-members-list">
                 ${t.playerIds.map(pid => {
@@ -224,7 +226,10 @@ function renderTempTeams() {
             ? `<span class="team-member-tag ${isSelected ? 'selected-for-move' : ''}" 
                      draggable="true" 
                      ondragstart="dragStart(event, ${pid})"
-                     onclick="event.stopPropagation(); togglePlayerSelection(${pid})">
+                     onclick="event.stopPropagation(); togglePlayerSelection(${pid})"
+                     ontouchstart="handleTouchStart(event, ${pid})"
+                     ontouchmove="handleTouchMove(event)"
+                     ontouchend="handleTouchEnd(event)">
                      ${p.avatar} ${p.name}
                </span>`
             : '';
@@ -234,23 +239,25 @@ function renderTempTeams() {
     `).join('');
 }
 
+// TAP LOGIC
 window.togglePlayerSelection = (pid) => {
     if (selectedPlayerId === pid) {
-        selectedPlayerId = null; // Deselect
+        selectedPlayerId = null;
     } else {
-        selectedPlayerId = pid; // Select
+        selectedPlayerId = pid;
     }
-    renderTempTeams(); // Re-render to show selection
+    renderTempTeams();
 };
 
 window.handleTeamClick = (teamId) => {
     if (selectedPlayerId) {
         movePlayerToTeam(selectedPlayerId, teamId);
-        selectedPlayerId = null; // Reset after move
+        selectedPlayerId = null;
         renderTempTeams();
     }
 };
 
+// DESKTOP DRAG & DROP
 window.allowDrop = (ev, el) => {
     ev.preventDefault();
     el.classList.add('drag-over');
@@ -263,14 +270,70 @@ window.dragStart = (ev, pid) => {
 }
 window.dropPlayer = (ev, teamId) => {
     ev.preventDefault();
-    const el = ev.currentTarget; // The team container
+    const el = ev.currentTarget;
     el.classList.remove('drag-over');
-
     const pid = parseFloat(ev.dataTransfer.getData("playerId"));
-    // Move logic
     movePlayerToTeam(pid, teamId);
     renderTempTeams();
 }
+
+// MOBILE TOUCH DRAG LOGIC
+window.handleTouchStart = (e, pid) => {
+    // Prevent default to stop scrolling while dragging? 
+    // Only if we intend to drag. Let's try to detect drag vs tap.
+    // For now, simple direct logic:
+    const touch = e.touches[0];
+    const target = e.currentTarget;
+
+    // Create Ghost
+    const ghost = target.cloneNode(true);
+    ghost.style.position = 'fixed';
+    ghost.style.left = (touch.clientX - 20) + 'px';
+    ghost.style.top = (touch.clientY - 20) + 'px';
+    ghost.style.opacity = '0.8';
+    ghost.style.pointerEvents = 'none'; // Important for elementFromPoint
+    ghost.style.zIndex = '9999';
+    ghost.style.transform = 'scale(1.1)';
+    document.body.appendChild(ghost);
+
+    touchDragItem = {
+        pid: pid,
+        ghost: ghost
+    };
+
+    // Slight vibration if supported
+    if (navigator.vibrate) navigator.vibrate(50);
+};
+
+window.handleTouchMove = (e) => {
+    if (!touchDragItem) return;
+    e.preventDefault(); // Stop scrolling
+    const touch = e.touches[0];
+    touchDragItem.ghost.style.left = (touch.clientX - 20) + 'px';
+    touchDragItem.ghost.style.top = (touch.clientY - 20) + 'px';
+
+    // Highlight drop zones?
+    // Optional optimization: check elementFromPoint here
+};
+
+window.handleTouchEnd = (e) => {
+    if (!touchDragItem) return;
+
+    // Detect drop target
+    const touch = e.changedTouches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const dropZone = el ? el.closest('.drop-zone') : null;
+
+    if (dropZone) {
+        const teamId = dropZone.dataset.teamId;
+        movePlayerToTeam(touchDragItem.pid, teamId);
+        renderTempTeams();
+    }
+
+    // Cleanup
+    if (touchDragItem.ghost) touchDragItem.ghost.remove();
+    touchDragItem = null;
+};
 
 function movePlayerToTeam(pid, targetTeamId) {
     // Remove from old team
