@@ -23,13 +23,14 @@
                 <span class="icon">🍎</span>
                 <h1>Pomme<br>Pourrie</h1>
             </div>
-            <button id="reset-app-btn" class="btn-icon" title="Redémarrer la soirée" onclick="resetApp()">🔄</button>
+            <div class="header-controls">
+                <button id="settings-btn" class="btn-icon" onclick="openSettings()" title="Paramètres">⚙️</button>
+                <button id="reset-app-btn" class="btn-icon" title="Redémarrer la soirée"
+                    onclick="resetApp()">🔄</button>
+            </div>
         </header>
 
         <div id="app">
-            <!-- GLOBAL SETTINGS BTN -->
-            <button id="settings-btn" class="settings-float-btn" onclick="openSettings()">⚙️</button>
-
             <!-- VIEW: SETUP PLAYERS -->
             <section id="view-setup" class="view active">
                 <div class="card intro-card">

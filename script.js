@@ -203,8 +203,9 @@ function generateTeams(numTeams) {
     state.currentGame = { name: '', teams: teams };
     renderTempTeams();
 }
+// --- DRAG AND DROP & MOBILE TAP ---
+let selectedPlayerId = null;
 
-// --- DRAG AND DROP TEAMS ---
 function renderTempTeams() {
     const teams = state.currentGame.teams;
     const container = document.getElementById('temp-teams-container');
@@ -212,19 +213,43 @@ function renderTempTeams() {
         <div class="team-preview" 
              ondragover="allowDrop(event, this)" 
              ondrop="dropPlayer(event, '${t.id}')"
-             ondragleave="leaveDrop(this)">
+             ondragleave="leaveDrop(this)"
+             onclick="handleTeamClick('${t.id}')">
             <h3>${t.name}</h3>
             <div class="team-members-list">
                 ${t.playerIds.map(pid => {
         const p = state.players.find(x => x.id === pid);
+        const isSelected = (pid === selectedPlayerId);
         return p
-            ? `<span class="team-member-tag" draggable="true" ondragstart="dragStart(event, ${pid})">${p.avatar} ${p.name}</span>`
+            ? `<span class="team-member-tag ${isSelected ? 'selected-for-move' : ''}" 
+                     draggable="true" 
+                     ondragstart="dragStart(event, ${pid})"
+                     onclick="event.stopPropagation(); togglePlayerSelection(${pid})">
+                     ${p.avatar} ${p.name}
+               </span>`
             : '';
     }).join('')}
             </div>
         </div>
     `).join('');
 }
+
+window.togglePlayerSelection = (pid) => {
+    if (selectedPlayerId === pid) {
+        selectedPlayerId = null; // Deselect
+    } else {
+        selectedPlayerId = pid; // Select
+    }
+    renderTempTeams(); // Re-render to show selection
+};
+
+window.handleTeamClick = (teamId) => {
+    if (selectedPlayerId) {
+        movePlayerToTeam(selectedPlayerId, teamId);
+        selectedPlayerId = null; // Reset after move
+        renderTempTeams();
+    }
+};
 
 window.allowDrop = (ev, el) => {
     ev.preventDefault();
