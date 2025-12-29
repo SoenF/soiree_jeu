@@ -177,11 +177,43 @@ function startParty() {
 function prepareNewGame() {
     state.editingGameIndex = -1;
     document.getElementById('game-name-input').value = '';
-    const slider = document.getElementById('team-count-slider');
-    slider.value = 2;
-    document.getElementById('team-count-val').innerText = '2';
-    generateTeams(2);
+
+    // UI Reset
+    document.getElementById('custom-team-count').value = '';
+    setTeamCount(2); // Default to 2
+
     showView('newGame');
+}
+
+window.setTeamCount = (count) => {
+    const validCount = Math.max(2, parseInt(count));
+
+    // Update active button state
+    document.querySelectorAll('.btn-preset').forEach(btn => {
+        if (parseInt(btn.innerText) === validCount) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    // If count matches a preset, clear custom input, otherwise value is set by custom input
+    const customInput = document.getElementById('custom-team-count');
+    if ([2, 3, 4, 5].includes(validCount)) {
+        if (parseInt(customInput.value) !== validCount) {
+            customInput.value = '';
+        }
+    } else {
+        // Deselect all presets if manual number is not in presets
+        document.querySelectorAll('.btn-preset').forEach(btn => btn.classList.remove('active'));
+    }
+
+    generateTeams(validCount);
+}
+
+window.setCustomTeamCount = (val) => {
+    if (!val) return;
+    setTeamCount(val);
 }
 
 function generateTeams(numTeams) {
@@ -768,17 +800,18 @@ function setupEventListeners() {
     safeListen('add-player-btn', 'click', addPlayer);
     safeListen('start-party-btn', 'click', startParty);
 
-    const slider = document.getElementById('team-count-slider');
-    if (slider) {
-        slider.addEventListener('input', (e) => {
-            const val = e.target.value;
-            document.getElementById('team-count-val').innerText = val;
-            generateTeams(val);
-        });
-    }
+    // Slider listeners removed
 
     safeListen('generate-teams-btn', 'click', () => {
-        generateTeams(document.getElementById('team-count-slider').value);
+        let count = 2;
+        const custom = document.getElementById('custom-team-count').value;
+        if (custom) {
+            count = parseInt(custom);
+        } else {
+            const activeBtn = document.querySelector('.btn-preset.active');
+            if (activeBtn) count = parseInt(activeBtn.innerText);
+        }
+        generateTeams(count);
     });
     safeListen('start-game-btn', 'click', startGame);
     safeListen('go-to-scoring-btn', 'click', () => prepareScoring(false));

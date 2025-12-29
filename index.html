@@ -92,8 +92,17 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Nombre d'équipes : <span id="team-count-val">2</span></label>
-                    <input type="range" id="team-count-slider" min="2" max="5" value="2">
+                    <label>Nombre d'équipes</label>
+                    <div class="team-count-selector">
+                        <div class="team-presets">
+                            <button class="btn-preset active" onclick="setTeamCount(2)">2</button>
+                            <button class="btn-preset" onclick="setTeamCount(3)">3</button>
+                            <button class="btn-preset" onclick="setTeamCount(4)">4</button>
+                            <button class="btn-preset" onclick="setTeamCount(5)">5</button>
+                        </div>
+                        <input type="number" id="custom-team-count" placeholder="Autre..."
+                            oninput="setCustomTeamCount(this.value)">
+                    </div>
                 </div>
 
                 <div class="form-actions">
