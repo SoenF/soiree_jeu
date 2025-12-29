@@ -1,374 +1,617 @@
-// RacePoint - Game Score Manager Logic
+// 🍎 POMME POURRIE - GAME ENGINE V4 (Rules & Drag-Drop)
 
-// --- Constants & State ---
-const STORAGE_KEY = 'racepoint_game_data';
-const VEHICLES = [
-    { id: 'Course', icon: '🏎️' },
-    { id: 'Taxi', icon: '🚕' },
-    { id: 'Police', icon: '🚓' },
-    { id: 'Ambulance', icon: '🚑' },
-    { id: 'Pompier', icon: '🚒' },
-    { id: 'Bus', icon: '🚌' },
-    { id: 'Camion', icon: '🚚' },
-    { id: 'Tracteur', icon: '🚜' },
-    { id: 'Scooter', icon: '🛵' },
-    { id: 'Moto', icon: '🏍️' },
-    { id: 'Vélo', icon: '🚲' },
-    { id: 'Train', icon: '🚂' },
-    { id: 'Avion', icon: '✈️' },
-    { id: 'Fusée', icon: '🚀' },
-    { id: 'Soucoupe', icon: '🛸' },
-    { id: 'Hélico', icon: '🚁' },
-    { id: 'Canoë', icon: '🛶' },
-    { id: 'Voilier', icon: '⛵' },
-    { id: 'Bateau', icon: '🚤' },
-    { id: 'Paquebot', icon: '🛳️' },
-    { id: 'Licorne', icon: '🦄' },
-    { id: 'Dragon', icon: '🐉' },
-    { id: 'T-Rex', icon: '🦖' },
-    { id: 'Père Noël', icon: '🎅' },
-    { id: 'Fantôme', icon: '👻' },
-    { id: 'Clown', icon: '🤡' },
-    { id: 'Robot', icon: '🤖' },
-    { id: 'Caca', icon: '💩' },
-    { id: 'Fête', icon: '🥳' },
-    { id: 'Champagne', icon: '🍾' }
+const STORAGE_KEY = 'pp_game_v4';
+
+// --- ASSETS ---
+const EMOJI_POOL = [
+    '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵',
+    '🐔', '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', 'Aq', '🦄', '🐝', '🐛', '🦋',
+    '🐌', '🐞', '🐜', '🦟', '🦗', '🕷', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐',
+    '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', 'A', '🦍', '🐘', '🦛',
+    '🦏', 'd', '🦓', '🦒', '🦘', '🐃', 'ox', '🐄', '🐎', '🐖', 'ram', '🐑', '🦙', '🐐', 'deer',
+    'dog', 'poodle', 'cat', 'rooster', 'turkey', 'peacock', 'parrot', 'swan', 'flamingo',
+    'dove', 'rabbit', 'raccoon', 'badger', 'mouse', 'rat', 'squirrel', 'hedgehog'
 ];
 
+// --- INITIAL STATE ---
 let state = {
-    teams: [
-        {
-            id: 1,
-            name: 'Équipe Alpha',
-            score: 0,
-            vehicle: '🏎️',
-            players: [
-                { name: 'Alice', avatar: 'assets/players/default.png' },
-                { name: 'Bob', avatar: 'assets/players/default.png' }
-            ]
-        },
-        {
-            id: 2,
-            name: 'Équipe Beta',
-            score: 0,
-            vehicle: '🚀',
-            players: [
-                { name: 'Charlie', avatar: 'assets/players/default.png' }
-            ]
-        }
-    ],
-    targetScore: 20 // Max score for track mapping
+    players: [], // { id, name, avatar }
+    currentGame: null,
+    editingGameIndex: -1,
+    history: [],
+    rules: { // Default Rules
+        win: 3,
+        second: 1,
+        ppHidden: 5,
+        ppFound: 2,
+        finder: 1
+    }
 };
 
-// --- Initialization ---
+// --- DOM ELEMENTS ---
+const views = {
+    setup: document.getElementById('view-setup'),
+    dashboard: document.getElementById('view-dashboard'),
+    newGame: document.getElementById('view-new-game'),
+    gameProgress: document.getElementById('view-game-progress'),
+    scoring: document.getElementById('view-scoring')
+};
+
+// --- INIT ---
 function init() {
     loadState();
-    // Validate vehicles in state (if loaded from older version with paths)
-    state.teams.forEach(t => {
-        if (t.vehicle.includes('/') || t.vehicle.includes('.png')) {
-            t.vehicle = '🏎️'; // Reset to default if old path format
-        }
-    });
 
-    renderApp();
+    // Migration checks (V3 -> V4 Rules)
+    if (!state.rules) {
+        state.rules = { win: 3, second: 1, ppHidden: 5, ppFound: 2, finder: 1 };
+    }
+
+    // Populate Rules Inputs
+    document.getElementById('rule-win').value = state.rules.win;
+    document.getElementById('rule-second').value = state.rules.second;
+    document.getElementById('rule-pp-hidden').value = state.rules.ppHidden;
+    document.getElementById('rule-pp-found').value = state.rules.ppFound;
+    document.getElementById('rule-finder').value = state.rules.finder;
+
+    if (state.players.length === 0) {
+        showView('setup');
+    } else {
+        showView('dashboard');
+        renderLeaderboard();
+        renderHistory();
+    }
     setupEventListeners();
 }
 
-// --- Persistence ---
+function getRandomEmoji() {
+    return EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
+}
+
+// --- NAVIGATION ---
+function showView(viewName) {
+    Object.values(views).forEach(el => el.classList.remove('active'));
+    views[viewName].classList.add('active');
+}
+
+window.toggleConfig = function () {
+    document.getElementById('config-content').classList.toggle('hidden');
+}
+
+// --- PLAYER MANAGEMENT ---
+function addPlayer() {
+    const input = document.getElementById('new-player-input');
+    const name = input.value.trim();
+    if (name) {
+        state.players.push({
+            id: Date.now() + Math.random(),
+            name: name,
+            avatar: getRandomEmoji()
+        });
+        input.value = '';
+        saveState();
+        renderPlayersList();
+    }
+}
+
+function quickAddPlayer() {
+    const name = prompt("Nom du nouveau joueur :");
+    if (name) {
+        state.players.push({
+            id: Date.now() + Math.random(),
+            name: name,
+            avatar: getRandomEmoji()
+        });
+        saveState();
+        renderLeaderboard();
+        alert(`${name} ajouté !`);
+    }
+}
+
+function removePlayer(id) {
+    if (confirm("Supprimer ce joueur ?")) {
+        state.players = state.players.filter(p => p.id !== id);
+        saveState();
+        renderPlayersList();
+    }
+}
+
+function renderPlayersList() {
+    const container = document.getElementById('players-list');
+    container.innerHTML = state.players.map(p => `
+        <div class="player-chip">
+            <span style="font-size:1.2rem; margin-right:4px">${p.avatar}</span> ${p.name}
+            <div class="remove" onclick="removePlayer(${p.id})">×</div>
+        </div>
+    `).join('');
+}
+
+// --- GAME LOGIC ---
+function startParty() {
+    if (state.players.length < 2) return alert("Il faut au moins 2 joueurs !");
+
+    // Save Config
+    state.rules.win = parseFloat(document.getElementById('rule-win').value) || 3;
+    state.rules.second = parseFloat(document.getElementById('rule-second').value) || 1;
+    state.rules.ppHidden = parseFloat(document.getElementById('rule-pp-hidden').value) || 5;
+    state.rules.ppFound = parseFloat(document.getElementById('rule-pp-found').value) || 2;
+    state.rules.finder = parseFloat(document.getElementById('rule-finder').value) || 1;
+
+    saveState();
+
+    showView('dashboard');
+    renderLeaderboard();
+    renderHistory();
+}
+
+function prepareNewGame() {
+    state.editingGameIndex = -1;
+    document.getElementById('game-name-input').value = '';
+    const slider = document.getElementById('team-count-slider');
+    slider.value = 2;
+    document.getElementById('team-count-val').innerText = '2';
+    generateTeams(2);
+    showView('newGame');
+}
+
+function generateTeams(numTeams) {
+    const shuffled = [...state.players].sort(() => 0.5 - Math.random());
+    const teams = [];
+
+    for (let i = 0; i < numTeams; i++) {
+        teams.push({
+            id: `team_${Date.now()}_${i}`,
+            name: `Équipe ${i + 1}`,
+            playerIds: []
+        });
+    }
+
+    shuffled.forEach((p, index) => {
+        teams[index % numTeams].playerIds.push(p.id);
+    });
+
+    state.currentGame = { name: '', teams: teams };
+    renderTempTeams();
+}
+
+// --- DRAG AND DROP TEAMS ---
+function renderTempTeams() {
+    const teams = state.currentGame.teams;
+    const container = document.getElementById('temp-teams-container');
+    container.innerHTML = teams.map(t => `
+        <div class="team-preview" 
+             ondragover="allowDrop(event, this)" 
+             ondrop="dropPlayer(event, '${t.id}')"
+             ondragleave="leaveDrop(this)">
+            <h3>${t.name} (PP cachée 🍎)</h3>
+            <div class="team-members-list">
+                ${t.playerIds.map(pid => {
+        const p = state.players.find(x => x.id === pid);
+        return p
+            ? `<span class="team-member-tag" draggable="true" ondragstart="dragStart(event, ${pid})">${p.avatar} ${p.name}</span>`
+            : '';
+    }).join('')}
+            </div>
+        </div>
+    `).join('');
+}
+
+window.allowDrop = (ev, el) => {
+    ev.preventDefault();
+    el.classList.add('drag-over');
+}
+window.leaveDrop = (el) => {
+    el.classList.remove('drag-over');
+}
+window.dragStart = (ev, pid) => {
+    ev.dataTransfer.setData("playerId", pid);
+}
+window.dropPlayer = (ev, teamId) => {
+    ev.preventDefault();
+    const el = ev.currentTarget; // The team container
+    el.classList.remove('drag-over');
+
+    const pid = parseFloat(ev.dataTransfer.getData("playerId"));
+    // Move logic
+    movePlayerToTeam(pid, teamId);
+    renderTempTeams();
+}
+
+function movePlayerToTeam(pid, targetTeamId) {
+    // Remove from old team
+    state.currentGame.teams.forEach(t => {
+        t.playerIds = t.playerIds.filter(id => id !== pid);
+    });
+    // Add to new team
+    const targetTeam = state.currentGame.teams.find(t => t.id === targetTeamId);
+    if (targetTeam) targetTeam.playerIds.push(pid);
+}
+
+// --- START GAME ---
+function startGame() {
+    // Check for empty teams?? User might want uneven teams.
+    const emptyTeam = state.currentGame.teams.find(t => t.playerIds.length === 0);
+    if (emptyTeam && !confirm(`L'équipe "${emptyTeam.name}" est vide. Continuer ?`)) return;
+
+    const nameInput = document.getElementById('game-name-input').value.trim();
+    state.currentGame.name = nameInput || `Jeu #${state.history.length + 1}`;
+    document.getElementById('current-game-title').innerText = state.currentGame.name;
+
+    const liveContainer = document.getElementById('live-teams-display');
+    liveContainer.innerHTML = state.currentGame.teams.map(t => `
+        <div class="team-preview">
+            <strong>${t.name}</strong> : <br>
+            ${t.playerIds.map(pid => {
+        const p = state.players.find(x => x.id === pid);
+        return p ? `<span style="display:inline-block; margin:2px 5px">${p.avatar} ${p.name}</span>` : '';
+    }).join('')}
+        </div>
+    `).join('');
+
+    saveState();
+    showView('gameProgress');
+}
+
+function editHistoryGame(index) {
+    const gameRecord = state.history[index];
+    state.editingGameIndex = index;
+    state.currentGame = { ...gameRecord }; // Deep clone needed ideally but shallow ok for single edit flow usually
+    // Deep clone teams to avoid mutating history directly if cancelled? 
+    // Simplified: we directly edit clones and save on validate.
+    state.currentGame.teams = JSON.parse(JSON.stringify(gameRecord.teams));
+    state.currentGame.results = JSON.parse(JSON.stringify(gameRecord.results));
+
+    scoringState = {
+        winnerId: gameRecord.results.winnerId,
+        secondId: gameRecord.results.secondId
+    };
+
+    prepareScoring(true);
+}
+
+
+// --- SCORING VIEW ---
+let scoringState = { winnerId: null, secondId: null };
+
+function prepareScoring(isEditing = false) {
+    const teams = state.currentGame.teams;
+    const winContainer = document.getElementById('winner-selection');
+    const secContainer = document.getElementById('second-selection');
+    const ppContainer = document.getElementById('pp-revelation-container');
+
+    const createTeamBtns = (container, type, preSelectedId) => {
+        container.innerHTML = teams.map(t => `
+            <button class="team-select-btn ${t.id === preSelectedId ? 'selected' : ''}" 
+                    onclick="selectTeam(this, '${type}', '${t.id}')">
+                ${t.name}
+            </button>
+        `).join('');
+    };
+
+    if (!isEditing) {
+        scoringState = { winnerId: null, secondId: null };
+    }
+
+    createTeamBtns(winContainer, 'winner', scoringState.winnerId);
+    createTeamBtns(secContainer, 'second', scoringState.secondId);
+
+    ppContainer.innerHTML = teams.map(t => {
+        const teamPlayers = t.playerIds.map(pid => state.players.find(x => x.id === pid)).filter(p => p);
+
+        // Skip if team empty
+        if (teamPlayers.length === 0) return `<div class="pp-revealer"><h4>${t.name} (Aucun joueur)</h4></div>`;
+
+        let existingPPData = null;
+        if (isEditing && state.currentGame.results && state.currentGame.results.ppData) {
+            existingPPData = state.currentGame.results.ppData[t.id];
+        }
+
+        const defaultPPId = existingPPData ? existingPPData.ppId : "";
+        const defaultFound = existingPPData ? existingPPData.found : false;
+
+        let defaultFinderIds = [];
+        if (existingPPData) {
+            if (existingPPData.finderIds) defaultFinderIds = existingPPData.finderIds;
+            else if (existingPPData.finderId) defaultFinderIds = [existingPPData.finderId];
+        }
+
+        return `
+            <div class="pp-revealer" id="pp-group-${t.id}">
+                <h4>🍎 Pomme Pourrie - ${t.name}</h4>
+                
+                <label>C'était qui ?</label>
+                <select class="pp-who-select">
+                    <option value="">-- Sélectionner --</option>
+                    ${teamPlayers.map(p => `<option value="${p.id}" ${p.id == defaultPPId ? 'selected' : ''}>${p.avatar} ${p.name}</option>`).join('')}
+                </select>
+
+                <label>Découverte ?</label>
+                <div class="toggle-group">
+                    <div class="toggle-opt no ${!defaultFound ? 'active' : ''}" onclick="setFound(this, '${t.id}', false)">Non</div>
+                    <div class="toggle-opt yes ${defaultFound ? 'active' : ''}" onclick="setFound(this, '${t.id}', true)">Oui</div>
+                </div>
+
+                <div id="finder-box-${t.id}" class="${defaultFound ? '' : 'hidden'}" data-found="${defaultFound}">
+                    <label>Trouvée par qui ?</label>
+                    <div class="finders-list">
+                        ${teamPlayers.map(p => `
+                            <label class="checkbox-item">
+                                <input type="checkbox" class="pp-finder-checkbox" value="${p.id}" 
+                                    ${defaultFinderIds.includes(p.id) ? 'checked' : ''}>
+                                <span>${p.avatar} ${p.name}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    showView('scoring');
+}
+
+window.selectTeam = (btn, type, id) => {
+    btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    if (type === 'winner') scoringState.winnerId = id;
+    if (type === 'second') scoringState.secondId = id;
+};
+
+window.setFound = (btn, teamId, found) => {
+    const group = btn.parentElement;
+    group.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const finderBox = document.getElementById(`finder-box-${teamId}`);
+    if (found) {
+        finderBox.classList.remove('hidden');
+        finderBox.dataset.found = "true";
+    } else {
+        finderBox.classList.add('hidden');
+        finderBox.dataset.found = "false";
+    }
+};
+
+function validateScores() {
+    if (!scoringState.winnerId) return alert("Sélectionnez l'équipe gagnante !");
+
+    const teams = state.currentGame.teams;
+    let ppResults = {};
+    let error = false;
+
+    teams.forEach(team => {
+        // Look up element
+        const teamEl = document.getElementById(`pp-group-${team.id}`);
+        // Skip empty teams
+        if (!teamEl || team.playerIds.length === 0) return;
+
+        const ppId = teamEl.querySelector('.pp-who-select').value;
+        if (!ppId) error = true;
+
+        const isFound = teamEl.querySelector(`#finder-box-${team.id}`).dataset.found === "true";
+
+        let finderIds = [];
+        if (isFound) {
+            const checkboxes = teamEl.querySelectorAll('.pp-finder-checkbox:checked');
+            checkboxes.forEach(cb => finderIds.push(parseFloat(cb.value)));
+        }
+
+        ppResults[team.id] = {
+            ppId: parseFloat(ppId),
+            found: isFound,
+            finderIds: finderIds
+        };
+    });
+
+    if (error) return alert("Veuillez désigner toutes les Pommes Pourries !");
+
+    const completeGameRecord = {
+        name: state.currentGame.name,
+        teams: state.currentGame.teams,
+        results: {
+            winnerId: scoringState.winnerId,
+            secondId: scoringState.secondId,
+            ppData: ppResults
+        }
+    };
+
+    if (state.editingGameIndex > -1) {
+        state.history[state.editingGameIndex] = completeGameRecord;
+    } else {
+        state.history.push(completeGameRecord);
+    }
+
+    saveState();
+    state.currentGame = null;
+    state.editingGameIndex = -1;
+
+    renderLeaderboard();
+    renderHistory();
+    showView('dashboard');
+}
+
+// --- SCORE ENGINE ---
+function calculateTotalScore(playerId) {
+    let score = 0;
+
+    // SAFEGUARDS FOR RULES
+    const R = state.rules || { win: 3, second: 1, ppHidden: 5, ppFound: 2, finder: 1 };
+
+    state.history.forEach(game => {
+        const { teams, results } = game;
+        const team = teams.find(t => t.playerIds.includes(playerId));
+        if (!team) return;
+
+        const teamId = team.id;
+
+        // Team Pts
+        if (teamId === results.winnerId) score += R.win;
+        else if (teamId === results.secondId) score += R.second;
+
+        // PP Pts
+        const ppData = results.ppData[teamId];
+        if (!ppData) return;
+
+        const isWinningTeam = (teamId === results.winnerId);
+        // Rule: If win, no PP bonus/malus for the PP itself
+        if (!isWinningTeam) {
+            if (ppData.ppId == playerId) {
+                if (!ppData.found) score += R.ppHidden;
+                else score += R.ppFound;
+            }
+            // Finder bonus IS applicable even if their team lost (common sense, or keep current rule)
+            // User did not specify Finder rule for winning team, assumed constant.
+            if (ppData.found) {
+                const finders = ppData.finderIds || (ppData.finderId ? [ppData.finderId] : []);
+                if (finders.includes(playerId)) score += R.finder;
+            }
+        }
+    });
+
+    return score;
+}
+
+
+// --- RENDERING ---
+function renderLeaderboard() {
+    const list = document.getElementById('leaderboard');
+    const podium = document.getElementById('podium');
+
+    const playersWithScores = state.players.map(p => ({
+        ...p,
+        score: calculateTotalScore(p.id)
+    }));
+
+    const sorted = playersWithScores.sort((a, b) => b.score - a.score);
+
+    // Split Top 3 vs Rest
+    const top3 = sorted.slice(0, 3);
+    const rest = sorted.slice(3);
+
+    // PODIUM RENDER
+    // Order visually for pyramid: #2, #1, #3
+    let podiumHtml = '';
+    if (top3.length > 0) {
+        // Prepare slots (if less than 3 players, handle gracefully)
+        const p1 = top3[0];
+        const p2 = top3[1];
+        const p3 = top3[2];
+
+        // Rank 2 (Left)
+        if (p2) {
+            podiumHtml += `
+                <div class="podium-item rank-2">
+                    <div class="podium-name">${p2.name}</div>
+                    <div class="podium-avatar">${p2.avatar}</div>
+                    <div class="podium-bar">
+                        <div class="podium-score">${p2.score}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Rank 1 (Center)
+        if (p1) {
+            podiumHtml += `
+                <div class="podium-item rank-1">
+                    <div class="podium-icon">👑</div>
+                    <div class="podium-name">${p1.name}</div>
+                    <div class="podium-avatar">${p1.avatar}</div>
+                    <div class="podium-bar">
+                        <div class="podium-score">${p1.score}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Rank 3 (Right)
+        if (p3) {
+            podiumHtml += `
+                <div class="podium-item rank-3">
+                    <div class="podium-name">${p3.name}</div>
+                    <div class="podium-avatar">${p3.avatar}</div>
+                    <div class="podium-bar">
+                        <div class="podium-score">${p3.score}</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    podium.innerHTML = podiumHtml;
+
+    // LIST RENDER
+    list.innerHTML = rest.map((p, idx) => `
+        <div class="leader-item rank-${idx + 4}">
+            <div class="leader-rank">#${idx + 4}</div>
+            <div class="leader-info" style="display:flex; align-items:center; gap:8px">
+                <span style="font-size:1.5rem">${p.avatar}</span>
+                ${p.name}
+            </div>
+            <div class="leader-score">${p.score}</div>
+        </div>
+    `).join('');
+}
+
+function renderHistory() {
+    const list = document.getElementById('games-history');
+    let html = '';
+    for (let i = state.history.length - 1; i >= 0; i--) {
+        const h = state.history[i];
+        const winnerName = h.teams.find(t => t.id === h.results.winnerId)?.name || '??';
+
+        html += `
+            <div class="history-item" onclick="editHistoryGame(${i})">
+                <div>
+                    <span class="game-name">${h.name}</span>
+                    <br><span style="font-size:0.8em; opacity:0.7">🏆 ${winnerName}</span>
+                </div>
+                <div class="edit-icon">✏️</div>
+            </div>
+        `;
+    }
+    list.innerHTML = html;
+}
+
+
+// --- EVENT LISTENERS ---
+function setupEventListeners() {
+    document.getElementById('new-game-btn').addEventListener('click', prepareNewGame);
+    document.getElementById('quick-add-player-btn').addEventListener('click', quickAddPlayer);
+    document.querySelectorAll('.back-btn').forEach(b => {
+        b.addEventListener('click', (e) => showView(e.target.dataset.target));
+    });
+
+    document.getElementById('add-player-btn').addEventListener('click', addPlayer);
+    document.getElementById('start-party-btn').addEventListener('click', startParty); // CHANGED TO START PARTY to Save Config
+
+    document.getElementById('team-count-slider').addEventListener('input', (e) => {
+        document.getElementById('team-count-val').innerText = e.target.value;
+    });
+    document.getElementById('generate-teams-btn').addEventListener('click', () => {
+        generateTeams(document.getElementById('team-count-slider').value);
+    });
+    document.getElementById('start-game-btn').addEventListener('click', startGame);
+    document.getElementById('go-to-scoring-btn').addEventListener('click', () => prepareScoring(false));
+    document.getElementById('validate-scores-btn').addEventListener('click', validateScores);
+    document.getElementById('reset-app-btn').addEventListener('click', () => {
+        if (confirm("Tout effacer et recommencer ?")) {
+            localStorage.removeItem(STORAGE_KEY);
+            location.reload();
+        }
+    });
+}
+
+// --- UTILS ---
 function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function loadState() {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-        state = JSON.parse(saved);
+    const s = localStorage.getItem(STORAGE_KEY);
+    if (s) {
+        state = JSON.parse(s);
+        // Ensure v3 structure (history array)
+        if (!state.history) state.history = [];
     }
-}
-
-// --- Rendering ---
-// --- Rendering ---
-function renderApp() {
-    renderTracks();
-    renderControls();
-}
-
-function renderTracks() {
-    const container = document.getElementById('tracks-list');
-
-    // 1. Setup SVG Track if not present
-    let svg = document.getElementById('race-track-svg');
-    const pathDef = "M 50,250 C 200,50 400,350 700,150 S 1100,250 1200,100"; // Sinuous winding path
-
-    if (!svg) {
-        container.innerHTML = `
-            <svg id="race-track-svg" viewBox="0 0 1250 400" preserveAspectRatio="xMidYMid meet">
-                <!-- Outer Glow/Border -->
-                <path d="${pathDef}" class="race-path-border" />
-                <!-- Inner Road -->
-                <path id="race-path-element" d="${pathDef}" class="race-path-line" />
-            </svg>
-        `;
-        svg = document.getElementById('race-track-svg');
-    }
-
-    const pathEl = document.getElementById('race-path-element');
-    const totalLen = pathEl.getTotalLength();
-
-    // 2. Prepare/Calc Positions & Collision Handling
-    const maxCurrentScore = Math.max(...state.teams.map(t => t.score), state.targetScore);
-
-    // Pre-calculate progress and sort primarily by progress
-    let vehicles = state.teams.map(team => {
-        const rawPct = Math.min((team.score / maxCurrentScore), 1.0);
-        return {
-            ...team,
-            rawPct: rawPct,
-            displayOffset: 0
-        };
-    }).sort((a, b) => a.rawPct - b.rawPct);
-
-    // Group close vehicles (visual collision detection)
-    // Increased threshold to 6% of track length to prevent overlaps
-    const PROXIMITY_THRESHOLD = 0.06;
-
-    const clusters = [];
-    if (vehicles.length > 0) {
-        let currentCluster = [vehicles[0]];
-        clusters.push(currentCluster);
-
-        for (let i = 1; i < vehicles.length; i++) {
-            const prev = vehicles[i - 1];
-            const curr = vehicles[i];
-
-            if ((curr.rawPct - prev.rawPct) < PROXIMITY_THRESHOLD) {
-                currentCluster.push(curr);
-            } else {
-                currentCluster = [curr];
-                clusters.push(currentCluster);
-            }
-        }
-    }
-
-    // Assign vertical offsets within clusters
-    clusters.forEach(cluster => {
-        if (cluster.length > 1) {
-            // Distribute: Center(0), Up(-75), Down(+75), Up(-150), Down(+150)...
-            cluster.forEach((v, idx) => {
-                if (idx === 0) {
-                    v.displayOffset = 0;
-                } else {
-                    const sign = (idx % 2 === 0) ? 1 : -1;
-                    const magnitude = Math.ceil(idx / 2);
-                    v.displayOffset = sign * magnitude * 85; // 85px spread for better visibility
-                }
-            });
-        }
-    });
-
-    // 3. Render
-    vehicles.forEach(data => {
-        const team = state.teams.find(t => t.id === data.id);
-        let wrapper = document.getElementById(`wrapper-${team.id}`);
-
-        if (!wrapper) {
-            wrapper = document.createElement('div');
-            wrapper.id = `wrapper-${team.id}`;
-            wrapper.className = 'vehicle-wrapper';
-            container.appendChild(wrapper);
-        }
-
-        const point = pathEl.getPointAtLength(data.rawPct * totalLen);
-        const xPct = (point.x / 1250) * 100;
-        const yPct = (point.y / 400) * 100;
-
-        wrapper.style.left = `${xPct}%`;
-        wrapper.style.top = `${yPct}%`;
-        wrapper.style.marginTop = `${data.displayOffset}px`;
-
-        // DETECT IF VEHICLE IS IMAGE OR EMOJI
-        const isEmoji = !team.vehicle.includes('/') && team.vehicle.length < 5;
-        const vehicleMarkup = isEmoji
-            ? `<span style="display: inline-block; transform: scaleX(-1);">${team.vehicle}</span>`
-            : `<img src="${team.vehicle}" style="width: 80px; height: 50px; object-fit: contain; transform: scaleX(-1);">`;
-
-        // Update Content
-        wrapper.innerHTML = `
-            <div class="vehicle">
-                ${vehicleMarkup}
-                <div class="vehicle-score-badge">${team.score}</div>
-            </div>
-        `;
-
-        // Z-Index: Ensure vehicles further along are on top
-        wrapper.style.zIndex = 100 + Math.floor(data.rawPct * 1000);
-    });
-
-    // Cleanup removed teams
-    const teamIds = state.teams.map(t => `wrapper-${t.id}`);
-    Array.from(container.querySelectorAll('.vehicle-wrapper')).forEach(el => {
-        if (!teamIds.includes(el.id)) {
-            el.remove();
-        }
-    });
-}
-
-function renderControls() {
-    const container = document.getElementById('teams-controls');
-    container.innerHTML = '';
-
-    state.teams.forEach(team => {
-        const isEmoji = !team.vehicle.includes('/') && team.vehicle.length < 5;
-        const vehicleMarkup = isEmoji
-            ? `<div class="control-vehicle-icon">${team.vehicle}</div>`
-            : `<div class="control-vehicle-icon"><img src="${team.vehicle}"></div>`;
-
-        const card = document.createElement('div');
-        card.className = 'team-control-card';
-        card.innerHTML = `
-            <div class="control-team-header">
-                <div class="control-team-name">${team.name}</div>
-                ${vehicleMarkup}
-            </div>
-            <div class="score-buttons">
-                <button class="btn-point" onclick="addPoints(${team.id}, 1)">+1</button>
-                <button class="btn-point" onclick="addPoints(${team.id}, 2)">+2</button>
-                <button class="btn-point" onclick="addPoints(${team.id}, 3)">+3</button>
-                <button class="btn-point btn-custom" onclick="customPoints(${team.id})">Personnalisé</button>
-            </div>
-        `;
-        container.appendChild(card);
-    });
-}
-
-// --- Actions ---
-window.addPoints = function (teamId, points) {
-    const team = state.teams.find(t => t.id === teamId);
-    if (team) {
-        team.score += points;
-        if (team.score < 0) team.score = 0;
-
-        saveState();
-        updateUI(teamId);
-    }
-};
-
-window.customPoints = function (teamId) {
-    const pts = prompt("Nombre de points à ajouter (négatif possible) :");
-    const num = parseInt(pts);
-    if (!isNaN(num)) {
-        window.addPoints(teamId, num);
-    }
-};
-
-function updateUI(teamId) {
-    const team = state.teams.find(t => t.id === teamId);
-    const scoreEl = document.getElementById(`score-val-${teamId}`);
-    const vehicleEl = document.getElementById(`vehicle-${teamId}`);
-
-    if (scoreEl) {
-        scoreEl.innerText = `${team.score} pts`;
-        scoreEl.classList.add('pulse');
-        setTimeout(() => scoreEl.classList.remove('pulse'), 300);
-    }
-
-    // Refresh all track positions because max score might have changed
-    renderTracks();
-}
-
-function resetScores() {
-    if (confirm("Voulez-vous vraiment remettre tous les scores à zéro ?")) {
-        state.teams.forEach(t => t.score = 0);
-        saveState();
-        renderApp();
-    }
-}
-
-// --- Setup Modal Logic ---
-function openSetup() {
-    const modal = document.getElementById('setup-modal');
-    renderSetupList();
-    modal.style.display = 'block';
-}
-
-function closeSetup() {
-    document.getElementById('setup-modal').style.display = 'none';
-}
-
-function renderSetupList() {
-    const container = document.getElementById('setup-teams-list');
-    container.innerHTML = '';
-
-    state.teams.forEach((team, tIdx) => {
-        const item = document.createElement('div');
-        item.className = 'setup-team-item';
-        item.innerHTML = `
-            <div class="setup-team-header">
-                <input type="text" value="${team.name}" class="setup-input" onchange="updateTeamName(${tIdx}, this.value)">
-                <select class="vehicle-select" onchange="updateTeamVehicle(${tIdx}, this.value)">
-                    ${VEHICLES.map(v => `<option value="${v.icon}" ${team.vehicle === v.icon ? 'selected' : ''}>${v.icon} ${v.id}</option>`).join('')}
-                </select>
-                <button class="btn danger" onclick="removeTeam(${tIdx})">&times;</button>
-            </div>
-            <div class="players-setup-list">
-                ${team.players.map((p, pIdx) => `
-                    <div class="player-item">
-                        <input type="text" value="${p.name}" class="setup-input" placeholder="Nom joueur" onchange="updatePlayerName(${tIdx}, ${pIdx}, this.value)">
-                        <button class="btn danger" onclick="removePlayer(${tIdx}, ${pIdx})">&times;</button>
-                    </div>
-                `).join('')}
-                <button class="btn secondary" onclick="addPlayer(${tIdx})">+ Joueur</button>
-            </div>
-        `;
-        container.appendChild(item);
-    });
-}
-
-window.updateTeamName = (idx, val) => state.teams[idx].name = val;
-window.updateTeamVehicle = (idx, val) => {
-    state.teams[idx].vehicle = val;
-    renderApp(); // Live update
-};
-window.removeTeam = (idx) => {
-    state.teams.splice(idx, 1);
-    renderSetupList();
-};
-window.addTeam = () => {
-    state.teams.push({
-        id: Date.now(),
-        name: `Équipe ${state.teams.length + 1}`,
-        score: 0,
-        vehicle: VEHICLES[0].icon,
-        players: []
-    });
-    renderSetupList();
-};
-window.updatePlayerName = (tIdx, pIdx, val) => state.teams[tIdx].players[pIdx].name = val;
-window.addPlayer = (tIdx) => {
-    state.teams[tIdx].players.push({ name: '', avatar: 'assets/players/default.png' });
-    renderSetupList();
-};
-window.removePlayer = (tIdx, pIdx) => {
-    state.teams[tIdx].players.splice(pIdx, 1);
-    renderSetupList();
-};
-
-function setupEventListeners() {
-    document.getElementById('setup-btn').addEventListener('click', openSetup);
-    document.querySelector('.close-modal').addEventListener('click', closeSetup);
-    document.getElementById('add-team-btn').addEventListener('click', window.addTeam);
-    document.getElementById('save-setup-btn').addEventListener('click', () => {
-        saveState();
-        renderApp();
-        closeSetup();
-    });
-    document.getElementById('reset-btn').addEventListener('click', resetScores);
-
-    window.onclick = (event) => {
-        if (event.target == document.getElementById('setup-modal')) {
-            closeSetup();
-        }
-    };
 }
 
 // Start
