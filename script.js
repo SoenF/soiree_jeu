@@ -1,3 +1,4 @@
+
 // 🍎 POMME POURRIE - GAME ENGINE V4 (Rules & Drag-Drop)
 
 const STORAGE_KEY = 'pp_game_v4';
@@ -5,12 +6,10 @@ const STORAGE_KEY = 'pp_game_v4';
 // --- ASSETS ---
 const EMOJI_POOL = [
     '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵',
-    '🐔', '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', 'Aq', '🦄', '🐝', '🐛', '🦋',
+    '🐔', '🐧', '🐦', '🐤', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🦄', '🐝', '🐛', '🦋',
     '🐌', '🐞', '🐜', '🦟', '🦗', '🕷', '🦂', '🐢', '🐍', '🦎', '🦖', '🦕', '🐙', '🦑', '🦐',
-    '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', 'A', '🦍', '🐘', '🦛',
-    '🦏', 'd', '🦓', '🦒', '🦘', '🐃', 'ox', '🐄', '🐎', '🐖', 'ram', '🐑', '🦙', '🐐', 'deer',
-    'dog', 'poodle', 'cat', 'rooster', 'turkey', 'peacock', 'parrot', 'swan', 'flamingo',
-    'dove', 'rabbit', 'raccoon', 'badger', 'mouse', 'rat', 'squirrel', 'hedgehog'
+    '🦞', '🦀', '🐡', '🐠', '🐟', '🐬', '🐳', '🐋', '🦈', '🐊', '🐅', '🦍', '🐘', '🦛',
+    '🦏', '🦓', '🦒', '🦘', '🐃', '🐄', '🐎', '🐖', '🐏', '🐑', '🦙', '🐐'
 ];
 
 // --- INITIAL STATE ---
@@ -69,12 +68,41 @@ function getRandomEmoji() {
 
 // --- NAVIGATION ---
 function showView(viewName) {
+    if (!views[viewName]) {
+        console.error(`View '${viewName}' not found`);
+        return;
+    }
     Object.values(views).forEach(el => el.classList.remove('active'));
     views[viewName].classList.add('active');
 }
 
-window.toggleConfig = function () {
-    document.getElementById('config-content').classList.toggle('hidden');
+// --- SETTINGS MODAL ---
+window.openSettings = function () {
+    // Refresh inputs from state in case of inconsistency
+    document.getElementById('rule-win').value = state.rules.win;
+    document.getElementById('rule-second').value = state.rules.second;
+    document.getElementById('rule-pp-hidden').value = state.rules.ppHidden;
+    document.getElementById('rule-pp-found').value = state.rules.ppFound;
+    document.getElementById('rule-finder').value = state.rules.finder;
+
+    document.getElementById('settings-modal').classList.remove('hidden');
+}
+
+window.closeSettings = function () {
+    document.getElementById('settings-modal').classList.add('hidden');
+    // Re-render leaderboard in case rules changed retroactively
+    if (state.players.length > 0) {
+        renderLeaderboard();
+    }
+}
+
+window.updateRules = function () {
+    state.rules.win = parseFloat(document.getElementById('rule-win').value) || 0;
+    state.rules.second = parseFloat(document.getElementById('rule-second').value) || 0;
+    state.rules.ppHidden = parseFloat(document.getElementById('rule-pp-hidden').value) || 0;
+    state.rules.ppFound = parseFloat(document.getElementById('rule-pp-found').value) || 0;
+    state.rules.finder = parseFloat(document.getElementById('rule-finder').value) || 0;
+    saveState();
 }
 
 // --- PLAYER MANAGEMENT ---
@@ -103,7 +131,7 @@ function quickAddPlayer() {
         });
         saveState();
         renderLeaderboard();
-        alert(`${name} ajouté !`);
+        alert(`${name} ajouté!`);
     }
 }
 
@@ -119,8 +147,9 @@ function renderPlayersList() {
     const container = document.getElementById('players-list');
     container.innerHTML = state.players.map(p => `
         <div class="player-chip">
-            <span style="font-size:1.2rem; margin-right:4px">${p.avatar}</span> ${p.name}
-            <div class="remove" onclick="removePlayer(${p.id})">×</div>
+            <div class="chip-avatar">${p.avatar}</div>
+            <div class="chip-name">${p.name}</div>
+            <div class="remove-btn" onclick="removePlayer(${p.id})">×</div>
         </div>
     `).join('');
 }
@@ -129,13 +158,7 @@ function renderPlayersList() {
 function startParty() {
     if (state.players.length < 2) return alert("Il faut au moins 2 joueurs !");
 
-    // Save Config
-    state.rules.win = parseFloat(document.getElementById('rule-win').value) || 3;
-    state.rules.second = parseFloat(document.getElementById('rule-second').value) || 1;
-    state.rules.ppHidden = parseFloat(document.getElementById('rule-pp-hidden').value) || 5;
-    state.rules.ppFound = parseFloat(document.getElementById('rule-pp-found').value) || 2;
-    state.rules.finder = parseFloat(document.getElementById('rule-finder').value) || 1;
-
+    // Initial save of default rules if someone just clicks start without opening settings
     saveState();
 
     showView('dashboard');
@@ -182,7 +205,7 @@ function renderTempTeams() {
              ondragover="allowDrop(event, this)" 
              ondrop="dropPlayer(event, '${t.id}')"
              ondragleave="leaveDrop(this)">
-            <h3>${t.name} (PP cachée 🍎)</h3>
+            <h3>${t.name}</h3>
             <div class="team-members-list">
                 ${t.playerIds.map(pid => {
         const p = state.players.find(x => x.id === pid);
@@ -319,7 +342,7 @@ function prepareScoring(isEditing = false) {
                 <h4>🍎 Pomme Pourrie - ${t.name}</h4>
                 
                 <label>C'était qui ?</label>
-                <select class="pp-who-select">
+                <select class="pp-who-select" onchange="updatePPFinder(this, '${t.id}')">
                     <option value="">-- Sélectionner --</option>
                     ${teamPlayers.map(p => `<option value="${p.id}" ${p.id == defaultPPId ? 'selected' : ''}>${p.avatar} ${p.name}</option>`).join('')}
                 </select>
@@ -333,13 +356,16 @@ function prepareScoring(isEditing = false) {
                 <div id="finder-box-${t.id}" class="${defaultFound ? '' : 'hidden'}" data-found="${defaultFound}">
                     <label>Trouvée par qui ?</label>
                     <div class="finders-list">
-                        ${teamPlayers.map(p => `
-                            <label class="checkbox-item">
+                        ${teamPlayers.map(p => {
+            const isPP = (p.id == defaultPPId);
+            // If user is PP, hide the option
+            return `
+                            <label class="checkbox-item ${isPP ? 'hidden' : ''}">
                                 <input type="checkbox" class="pp-finder-checkbox" value="${p.id}" 
                                     ${defaultFinderIds.includes(p.id) ? 'checked' : ''}>
                                 <span>${p.avatar} ${p.name}</span>
                             </label>
-                        `).join('')}
+                        `}).join('')}
                     </div>
                 </div>
             </div>
@@ -348,6 +374,24 @@ function prepareScoring(isEditing = false) {
 
     showView('scoring');
 }
+
+window.updatePPFinder = (select, teamId) => {
+    const ppId = select.value;
+    const container = document.getElementById(`finder-box-${teamId}`);
+    const checkboxes = container.querySelectorAll('.pp-finder-checkbox');
+
+    checkboxes.forEach(cb => {
+        const label = cb.parentElement;
+        if (cb.value == ppId) {
+            cb.checked = false;
+            cb.disabled = true;
+            label.classList.add('hidden'); // Hide completely
+        } else {
+            cb.disabled = false;
+            label.classList.remove('hidden'); // Show
+        }
+    });
+};
 
 window.selectTeam = (btn, type, id) => {
     btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
@@ -372,61 +416,74 @@ window.setFound = (btn, teamId, found) => {
 };
 
 function validateScores() {
-    if (!scoringState.winnerId) return alert("Sélectionnez l'équipe gagnante !");
+    console.log("Validating scores...");
+    try {
+        if (!scoringState.winnerId) return alert("Sélectionnez l'équipe gagnante !");
 
-    const teams = state.currentGame.teams;
-    let ppResults = {};
-    let error = false;
+        const teams = state.currentGame.teams;
+        let ppResults = {};
+        let error = false;
 
-    teams.forEach(team => {
-        // Look up element
-        const teamEl = document.getElementById(`pp-group-${team.id}`);
-        // Skip empty teams
-        if (!teamEl || team.playerIds.length === 0) return;
+        teams.forEach(team => {
+            // Look up element
+            const teamEl = document.getElementById(`pp-group-${team.id}`);
+            // Skip empty teams
+            if (!teamEl || team.playerIds.length === 0) return;
 
-        const ppId = teamEl.querySelector('.pp-who-select').value;
-        if (!ppId) error = true;
+            const ppSelect = teamEl.querySelector('.pp-who-select');
+            const ppId = ppSelect ? ppSelect.value : null;
 
-        const isFound = teamEl.querySelector(`#finder-box-${team.id}`).dataset.found === "true";
+            if (!ppId) {
+                error = true;
+                return;
+            }
 
-        let finderIds = [];
-        if (isFound) {
-            const checkboxes = teamEl.querySelectorAll('.pp-finder-checkbox:checked');
-            checkboxes.forEach(cb => finderIds.push(parseFloat(cb.value)));
-        }
+            const finderBox = teamEl.querySelector(`#finder-box-${team.id}`);
+            const isFound = finderBox ? finderBox.dataset.found === "true" : false;
 
-        ppResults[team.id] = {
-            ppId: parseFloat(ppId),
-            found: isFound,
-            finderIds: finderIds
+            let finderIds = [];
+            if (isFound) {
+                const checkboxes = teamEl.querySelectorAll('.pp-finder-checkbox:checked');
+                checkboxes.forEach(cb => finderIds.push(parseFloat(cb.value)));
+            }
+
+            ppResults[team.id] = {
+                ppId: parseFloat(ppId),
+                found: isFound,
+                finderIds: finderIds
+            };
+        });
+
+        if (error) return alert("Veuillez désigner toutes les Pommes Pourries !");
+
+        const completeGameRecord = {
+            name: state.currentGame.name,
+            teams: state.currentGame.teams,
+            results: {
+                winnerId: scoringState.winnerId,
+                secondId: scoringState.secondId,
+                ppData: ppResults
+            }
         };
-    });
 
-    if (error) return alert("Veuillez désigner toutes les Pommes Pourries !");
-
-    const completeGameRecord = {
-        name: state.currentGame.name,
-        teams: state.currentGame.teams,
-        results: {
-            winnerId: scoringState.winnerId,
-            secondId: scoringState.secondId,
-            ppData: ppResults
+        if (state.editingGameIndex > -1) {
+            state.history[state.editingGameIndex] = completeGameRecord;
+        } else {
+            state.history.push(completeGameRecord);
         }
-    };
 
-    if (state.editingGameIndex > -1) {
-        state.history[state.editingGameIndex] = completeGameRecord;
-    } else {
-        state.history.push(completeGameRecord);
+        saveState();
+        state.currentGame = null;
+        state.editingGameIndex = -1;
+
+        renderLeaderboard();
+        renderHistory();
+        showView('dashboard');
+
+    } catch (e) {
+        console.error("Error in validateScores:", e);
+        alert("Une erreur est survenue lors de la validation des scores : " + e.message);
     }
-
-    saveState();
-    state.currentGame = null;
-    state.editingGameIndex = -1;
-
-    renderLeaderboard();
-    renderHistory();
-    showView('dashboard');
 }
 
 // --- SCORE ENGINE ---
@@ -572,32 +629,63 @@ function renderHistory() {
 }
 
 
+// --- NAVIGATION ---
+function showView(viewName) {
+    if (!views[viewName]) {
+        console.error(`View '${viewName}' not found`);
+        return;
+    }
+    Object.values(views).forEach(el => el.classList.remove('active'));
+    views[viewName].classList.add('active');
+}
+
+// ... (Rest of modal logic) ...
+
+// --- RESET LOGIC ---
+window.resetApp = function () {
+    if (confirm("⚠️ Tout effacer et recommencer la soirée à zéro ?")) {
+        localStorage.removeItem(STORAGE_KEY);
+        location.reload();
+    }
+}
+
 // --- EVENT LISTENERS ---
 function setupEventListeners() {
-    document.getElementById('new-game-btn').addEventListener('click', prepareNewGame);
-    document.getElementById('quick-add-player-btn').addEventListener('click', quickAddPlayer);
+    // Helper to safely add listener
+    const safeListen = (id, event, handler) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener(event, handler);
+        else console.warn(`Element ${id} not found for event ${event}`);
+    };
+
+    safeListen('new-game-btn', 'click', prepareNewGame);
+    safeListen('quick-add-player-btn', 'click', quickAddPlayer);
+
+    // Fix: Use currentTarget to ensure we get the button's dataset, not the inner span's
     document.querySelectorAll('.back-btn').forEach(b => {
-        b.addEventListener('click', (e) => showView(e.target.dataset.target));
+        b.addEventListener('click', (e) => {
+            const target = e.currentTarget.dataset.target;
+            showView(target);
+        });
     });
 
-    document.getElementById('add-player-btn').addEventListener('click', addPlayer);
-    document.getElementById('start-party-btn').addEventListener('click', startParty); // CHANGED TO START PARTY to Save Config
+    safeListen('add-player-btn', 'click', addPlayer);
+    safeListen('start-party-btn', 'click', startParty);
 
-    document.getElementById('team-count-slider').addEventListener('input', (e) => {
-        document.getElementById('team-count-val').innerText = e.target.value;
-    });
-    document.getElementById('generate-teams-btn').addEventListener('click', () => {
+    const slider = document.getElementById('team-count-slider');
+    if (slider) {
+        slider.addEventListener('input', (e) => {
+            document.getElementById('team-count-val').innerText = e.target.value;
+        });
+    }
+
+    safeListen('generate-teams-btn', 'click', () => {
         generateTeams(document.getElementById('team-count-slider').value);
     });
-    document.getElementById('start-game-btn').addEventListener('click', startGame);
-    document.getElementById('go-to-scoring-btn').addEventListener('click', () => prepareScoring(false));
-    document.getElementById('validate-scores-btn').addEventListener('click', validateScores);
-    document.getElementById('reset-app-btn').addEventListener('click', () => {
-        if (confirm("Tout effacer et recommencer ?")) {
-            localStorage.removeItem(STORAGE_KEY);
-            location.reload();
-        }
-    });
+    safeListen('start-game-btn', 'click', startGame);
+    safeListen('go-to-scoring-btn', 'click', () => prepareScoring(false));
+    safeListen('validate-scores-btn', 'click', validateScores);
+    safeListen('reset-app-btn', 'click', resetApp);
 }
 
 // --- UTILS ---

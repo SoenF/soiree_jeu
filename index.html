@@ -23,168 +23,178 @@
                 <span class="icon">🍎</span>
                 <h1>Pomme<br>Pourrie</h1>
             </div>
-            <button id="reset-app-btn" class="btn-icon" title="Redémarrer la soirée">🔄</button>
+            <button id="reset-app-btn" class="btn-icon" title="Redémarrer la soirée" onclick="resetApp()">🔄</button>
         </header>
 
-        <!-- VIEW: SETUP PLAYERS -->
-        <section id="view-setup" class="view active">
-            <div class="card intro-card">
-                <h2>Qui joue ce soir ?</h2>
-                <p>Ajoutez tous les participants pour commencer.</p>
-            </div>
+        <div id="app">
+            <!-- GLOBAL SETTINGS BTN -->
+            <button id="settings-btn" class="settings-float-btn" onclick="openSettings()">⚙️</button>
 
-            <!-- SCORING CONFIG -->
-            <div class="config-section card">
-                <h3 onclick="toggleConfig()" style="cursor:pointer; display:flex; justify-content:space-between;">
-                    ⚙️ Règles des points <span>▼</span>
-                </h3>
-                <div id="config-content" class="config-content hidden">
+            <!-- VIEW: SETUP PLAYERS -->
+            <section id="view-setup" class="view active">
+                <div class="card intro-card">
+                    <h2>Qui joue ce soir ?</h2>
+                    <p>Ajoutez tous les participants pour commencer.</p>
+                </div>
+
+                <div class="input-group">
+                    <input type="text" id="new-player-input" placeholder="Prénom du joueur..." autocomplete="off">
+                    <button id="add-player-btn" class="btn primary">Ajouter</button>
+                </div>
+
+                <div id="players-list" class="players-grid">
+                    <!-- Players injected here -->
+                </div>
+
+                <div class="bottom-action">
+                    <button id="start-party-btn" class="btn success full-width large">C'est parti ! 🚀</button>
+                </div>
+            </section>
+
+            <!-- VIEW: DASHBOARD (LEADERBOARD) -->
+            <section id="view-dashboard" class="view">
+                <div class="dashboard-controls">
+                    <button id="new-game-btn" class="btn primary full-width large">🎮 Nouveau Jeu</button>
+                    <button id="quick-add-player-btn" class="btn secondary full-width">👤 Ajouter un joueur</button>
+                </div>
+
+                <div class="dashboard-header">
+                    <h2>Classement</h2>
+                </div>
+
+                <div id="podium" class="podium-container">
+                    <!-- Top 3 rendered here -->
+                </div>
+
+                <div id="leaderboard" class="leaderboard-list">
+                    <!-- Rest of players injected here -->
+                </div>
+
+                <div class="history-section">
+                    <h3>Historique (Cliquer pour modifier)</h3>
+                    <div id="games-history" class="games-list">
+                        <!-- History injected here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW: NEW GAME PREP -->
+            <section id="view-new-game" class="view">
+                <div class="nav-header">
+                    <button class="back-btn" data-target="dashboard">← Retour</button>
+                    <h2>Préparation</h2>
+                </div>
+
+                <div class="form-group">
+                    <label>Nom du mini-jeu</label>
+                    <input type="text" id="game-name-input" placeholder="Ex: Mime, Chaises Musicales...">
+                </div>
+
+                <div class="form-group">
+                    <label>Nombre d'équipes : <span id="team-count-val">2</span></label>
+                    <input type="range" id="team-count-slider" min="2" max="5" value="2">
+                </div>
+
+                <div class="form-actions">
+                    <button id="generate-teams-btn" class="btn secondary">🎲 Mélanger les équipes</button>
+                </div>
+
+                <div id="temp-teams-container" class="temp-teams-container">
+                    <!-- Teams Preview -->
+                </div>
+
+                <div class="bottom-action">
+                    <button id="start-game-btn" class="btn success full-width large">Lancer le Jeu ! ▶️</button>
+                </div>
+            </section>
+
+            <!-- VIEW: GAME IN PROGRESS -->
+            <section id="view-game-progress" class="view">
+                <div class="game-status-card">
+                    <h3 class="pulsing">Jeu en cours...</h3>
+                    <h1 id="current-game-title">Titre du Jeu</h1>
+                    <div class="hint">⚠️ N'oubliez pas vos rôles de Pomme Pourrie !</div>
+                </div>
+
+                <div id="live-teams-display" class="live-teams-display">
+                    <!-- Static display of teams for reference -->
+                </div>
+
+                <div class="bottom-action">
+                    <button id="go-to-scoring-btn" class="btn primary full-width large">Terminer & Noter 📝</button>
+                </div>
+            </section>
+
+            <!-- VIEW: SCORING -->
+            <section id="view-scoring" class="view">
+                <div class="nav-header">
+                    <h2>Résultats du Jeu</h2>
+                </div>
+
+                <div class="scoring-step card">
+                    <h3>🥇 Qui a gagné ?</h3>
+                    <div class="team-selector" id="winner-selection">
+                        <!-- Buttons for teams -->
+                    </div>
+                </div>
+
+                <div class="scoring-step card">
+                    <h3>🥈 Qui est deuxième ?</h3>
+                    <div class="team-selector" id="second-selection">
+                        <!-- Buttons for teams -->
+                    </div>
+                </div>
+
+                <div id="pp-revelation-container">
+                    <!-- Dynamic forms for each team to reveal PP -->
+                </div>
+
+                <div class="bottom-action">
+                    <button id="validate-scores-btn" class="btn success full-width large">Valider les scores ✅</button>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- SOUNDS (Optional, placeholders) -->
+        <!-- <audio id="sound-win" src="assets/win.mp3"></audio> -->
+
+        <!-- SETTINGS MODAL -->
+        <div id="settings-modal" class="modal-overlay hidden">
+            <div class="modal-card">
+                <div class="modal-header">
+                    <h3>Paramètres</h3>
+                    <button class="close-modal-btn" onclick="closeSettings()">×</button>
+                </div>
+                <div class="config-content">
                     <div class="config-item">
                         <label>🥇 Victoire Équipe</label>
-                        <input type="number" id="rule-win" value="3">
+                        <input type="number" id="rule-win" onchange="updateRules()">
                     </div>
                     <div class="config-item">
                         <label>🥈 2ème place</label>
-                        <input type="number" id="rule-second" value="1">
+                        <input type="number" id="rule-second" onchange="updateRules()">
                     </div>
                     <div class="config-item">
                         <label>🍏 Bonus PP cachée</label>
-                        <input type="number" id="rule-pp-hidden" value="5">
+                        <input type="number" id="rule-pp-hidden" onchange="updateRules()">
                     </div>
                     <div class="config-item">
                         <label>🤢 Malus PP trouvée</label>
-                        <input type="number" id="rule-pp-found" value="2">
+                        <input type="number" id="rule-pp-found" onchange="updateRules()">
                     </div>
                     <div class="config-item">
                         <label>🕵️ Détective (trouveur)</label>
-                        <input type="number" id="rule-finder" value="1">
+                        <input type="number" id="rule-finder" onchange="updateRules()">
                     </div>
                 </div>
-            </div>
-
-            <div class="input-group">
-                <input type="text" id="new-player-input" placeholder="Prénom du joueur..." autocomplete="off">
-                <button id="add-player-btn" class="btn primary">Ajouter</button>
-            </div>
-
-            <div id="players-list" class="players-grid">
-                <!-- Players injected here -->
-            </div>
-
-            <div class="bottom-action">
-                <button id="start-party-btn" class="btn success full-width large">C'est parti ! 🚀</button>
-            </div>
-        </section>
-
-        <!-- VIEW: DASHBOARD (LEADERBOARD) -->
-        <section id="view-dashboard" class="view">
-            <div class="dashboard-controls">
-                <button id="new-game-btn" class="btn primary full-width large">🎮 Nouveau Jeu</button>
-                <button id="quick-add-player-btn" class="btn secondary full-width">👤 Ajouter un joueur</button>
-            </div>
-
-            <div class="dashboard-header">
-                <h2>Classement</h2>
-            </div>
-
-            <div id="podium" class="podium-container">
-                <!-- Top 3 rendered here -->
-            </div>
-
-            <div id="leaderboard" class="leaderboard-list">
-                <!-- Rest of players injected here -->
-            </div>
-
-            <div class="history-section">
-                <h3>Historique (Cliquer pour modifier)</h3>
-                <div id="games-history" class="games-list">
-                    <!-- History injected here -->
+                <div style="margin-top:2rem; text-align:center;">
+                    <button class="btn primary" onclick="closeSettings()">Valider</button>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- VIEW: NEW GAME PREP -->
-        <section id="view-new-game" class="view">
-            <div class="nav-header">
-                <button class="back-btn" data-target="view-dashboard">← Retour</button>
-                <h2>Préparation</h2>
-            </div>
-
-            <div class="form-group">
-                <label>Nom du mini-jeu</label>
-                <input type="text" id="game-name-input" placeholder="Ex: Mime, Chaises Musicales...">
-            </div>
-
-            <div class="form-group">
-                <label>Nombre d'équipes : <span id="team-count-val">2</span></label>
-                <input type="range" id="team-count-slider" min="2" max="5" value="2">
-            </div>
-
-            <div class="form-actions">
-                <button id="generate-teams-btn" class="btn secondary">🎲 Mélanger les équipes</button>
-            </div>
-
-            <div id="temp-teams-container" class="temp-teams-container">
-                <!-- Teams Preview -->
-            </div>
-
-            <div class="bottom-action">
-                <button id="start-game-btn" class="btn success full-width large">Lancer le Jeu ! ▶️</button>
-            </div>
-        </section>
-
-        <!-- VIEW: GAME IN PROGRESS -->
-        <section id="view-game-progress" class="view">
-            <div class="game-status-card">
-                <h3 class="pulsing">Jeu en cours...</h3>
-                <h1 id="current-game-title">Titre du Jeu</h1>
-                <div class="hint">⚠️ N'oubliez pas vos rôles de Pomme Pourrie !</div>
-            </div>
-
-            <div id="live-teams-display" class="live-teams-display">
-                <!-- Static display of teams for reference -->
-            </div>
-
-            <div class="bottom-action">
-                <button id="go-to-scoring-btn" class="btn primary full-width large">Terminer & Noter 📝</button>
-            </div>
-        </section>
-
-        <!-- VIEW: SCORING -->
-        <section id="view-scoring" class="view">
-            <div class="nav-header">
-                <h2>Résultats du Jeu</h2>
-            </div>
-
-            <div class="scoring-step card">
-                <h3>🥇 Qui a gagné ?</h3>
-                <div class="team-selector" id="winner-selection">
-                    <!-- Buttons for teams -->
-                </div>
-            </div>
-
-            <div class="scoring-step card">
-                <h3>🥈 Qui est deuxième ?</h3>
-                <div class="team-selector" id="second-selection">
-                    <!-- Buttons for teams -->
-                </div>
-            </div>
-
-            <div id="pp-revelation-container">
-                <!-- Dynamic forms for each team to reveal PP -->
-            </div>
-
-            <div class="bottom-action">
-                <button id="validate-scores-btn" class="btn success full-width large">Valider les scores ✅</button>
-            </div>
-        </section>
-
-    </div>
-
-    <!-- SOUNDS (Optional, placeholders) -->
-    <!-- <audio id="sound-win" src="assets/win.mp3"></audio> -->
-
-    <script src="script.js"></script>
+        <script src="script.js"></script>
 </body>
 
 </html>
