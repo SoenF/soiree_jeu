@@ -771,7 +771,9 @@ function setupEventListeners() {
     const slider = document.getElementById('team-count-slider');
     if (slider) {
         slider.addEventListener('input', (e) => {
-            document.getElementById('team-count-val').innerText = e.target.value;
+            const val = e.target.value;
+            document.getElementById('team-count-val').innerText = val;
+            generateTeams(val);
         });
     }
 
