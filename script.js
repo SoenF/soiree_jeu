@@ -22,7 +22,7 @@ let state = {
         win: 3,
         second: 1,
         ppHidden: 5,
-        ppFound: 2,
+        ppFound: -2,
         finder: 1
     }
 };
@@ -42,7 +42,7 @@ function init() {
 
     // Migration checks (V3 -> V4 Rules)
     if (!state.rules) {
-        state.rules = { win: 3, second: 1, ppHidden: 5, ppFound: 2, finder: 1 };
+        state.rules = { win: 3, second: 1, ppHidden: 5, ppFound: -2, finder: 1 };
     }
 
     // Populate Rules Inputs
@@ -63,7 +63,15 @@ function init() {
 }
 
 function getRandomEmoji() {
-    return EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
+    const usedEmojis = state.players.map(p => p.avatar);
+    const available = EMOJI_POOL.filter(e => !usedEmojis.includes(e));
+
+    if (available.length > 0) {
+        return available[Math.floor(Math.random() * available.length)];
+    } else {
+        // Fallback if we have more players than emojis
+        return EMOJI_POOL[Math.floor(Math.random() * EMOJI_POOL.length)];
+    }
 }
 
 // --- NAVIGATION ---
@@ -619,7 +627,7 @@ function renderHistory() {
             <div class="history-item" onclick="editHistoryGame(${i})">
                 <div>
                     <span class="game-name">${h.name}</span>
-                    <br><span style="font-size:0.8em; opacity:0.7">🏆 ${winnerName}</span>
+                    <br><span class="game-winner">🏆 ${winnerName}</span>
                 </div>
                 <div class="edit-icon">✏️</div>
             </div>
