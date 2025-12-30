@@ -1,5 +1,5 @@
 
-// 🍎 POMME POURRIE - GAME ENGINE V4 (Firebase Edition)
+// 🍎 POMME POURRIE - GAME ENGINE V5 (Firebase Edition)
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -38,9 +38,9 @@ let state = {
     history: [],
     rules: { // Default Rules
         win: 3,
-        second: 1,
+        second: 0,
         ppHidden: 5,
-        ppFound: -2,
+        ppFound: 1,
         finder: 1
     }
 };
@@ -71,7 +71,15 @@ function init() {
 
         // Migration checks (V3 -> V4 Rules)
         if (!state.rules) {
-            state.rules = { win: 3, second: 1, ppHidden: 5, ppFound: -2, finder: 1 };
+            state.rules = { win: 3, second: 0, ppHidden: 5, ppFound: 1, finder: 1 };
+        } else if (state.rules.ppFound === -2) {
+            // Force migration from V4 rules if we detect the old standard malus
+            state.rules.ppFound = 1;
+            state.rules.second = 0; // Remove second place points
+            state.rules.win = 3;
+            state.rules.ppHidden = 5;
+            state.rules.finder = 1;
+            saveState(); // Update server
         }
 
         updateUI();
@@ -682,7 +690,7 @@ function validateScores() {
 // --- SCORE ENGINE ---
 function calculateTotalScore(playerId) {
     let score = 0;
-    const R = state.rules || { win: 3, second: 1, ppHidden: 5, ppFound: -2, finder: 1 };
+    const R = state.rules || { win: 3, second: 0, ppHidden: 5, ppFound: 1, finder: 1 };
 
     state.history.forEach(game => {
         const { teams, results } = game;
@@ -709,7 +717,7 @@ function calculateTotalScore(playerId) {
                 // Rule: "ne gagne des points que si son équipe perd et que personne ne la trouve"
                 // Rule: "perd des points si son équipe perd et quelle a été trouvée"
                 if (ppData.found) {
-                    score += R.ppFound; // Malus (e.g. -2)
+                    score += R.ppFound; // Bonus (now +1)
                 } else {
                     score += R.ppHidden; // Bonus (e.g. +5)
                 }
