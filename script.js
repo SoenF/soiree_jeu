@@ -1,7 +1,25 @@
 
-// 🍎 POMME POURRIE - GAME ENGINE V4 (Rules & Drag-Drop)
+// 🍎 POMME POURRIE - GAME ENGINE V4 (Firebase Edition)
 
-const STORAGE_KEY = 'pp_game_v4';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+// --- FIREBASE CONFIG ---
+const firebaseConfig = {
+    apiKey: "AIzaSyAQ_yRXGtm5AH4epr0oWIebfAK8ZukW30g",
+    authDomain: "pomme-pourrie.firebaseapp.com",
+    databaseURL: "https://pomme-pourrie-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "pomme-pourrie",
+    storageBucket: "pomme-pourrie.firebasestorage.app",
+    messagingSenderId: "806948078604",
+    appId: "1:806948078604:web:d6daffd54e49c2c1a31a29",
+    measurementId: "G-V8VPLWXN6V"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const DB_REF = ref(db, 'game_state');
 
 // --- ASSETS ---
 const EMOJI_POOL = [
@@ -38,28 +56,60 @@ const views = {
 
 // --- INIT ---
 function init() {
-    loadState();
+    // Real-time listener
+    onValue(DB_REF, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            state = data;
+            if (!state.history) state.history = [];
+            if (!state.players) state.players = [];
+        } else {
+            // No data on server, keep default state
+            // Optionally save default state to init server? 
+            // Better to just wait for user action to save.
+        }
 
-    // Migration checks (V3 -> V4 Rules)
-    if (!state.rules) {
-        state.rules = { win: 3, second: 1, ppHidden: 5, ppFound: -2, finder: 1 };
-    }
+        // Migration checks (V3 -> V4 Rules)
+        if (!state.rules) {
+            state.rules = { win: 3, second: 1, ppHidden: 5, ppFound: -2, finder: 1 };
+        }
 
+        updateUI();
+    });
+
+    setupEventListeners();
+}
+
+function updateUI() {
     // Populate Rules Inputs
-    document.getElementById('rule-win').value = state.rules.win;
-    document.getElementById('rule-second').value = state.rules.second;
-    document.getElementById('rule-pp-hidden').value = state.rules.ppHidden;
-    document.getElementById('rule-pp-found').value = state.rules.ppFound;
-    document.getElementById('rule-finder').value = state.rules.finder;
+    if (document.getElementById('rule-win')) {
+        document.getElementById('rule-win').value = state.rules.win;
+        document.getElementById('rule-second').value = state.rules.second;
+        document.getElementById('rule-pp-hidden').value = state.rules.ppHidden;
+        document.getElementById('rule-pp-found').value = state.rules.ppFound;
+        document.getElementById('rule-finder').value = state.rules.finder;
+    }
 
     if (state.players.length === 0) {
         showView('setup');
     } else {
-        showView('dashboard');
+        // If we represent a non-empty state, we update lists.
+        // We DO NOT auto-redirect to dashboard anymore, to allow adding multiple players.
+
+        renderPlayersList(); // Update player list in setup view too just in case
         renderLeaderboard();
         renderHistory();
+
+        // Refresh temp teams if in new game view
+        if (state.currentGame && document.getElementById('view-new-game').classList.contains('active')) {
+            renderTempTeams();
+        }
+
+        // Refresh live teams if in progress view
+        if (state.currentGame && document.getElementById('view-game-progress').classList.contains('active')) {
+            renderLiveTeams();
+        }
     }
-    setupEventListeners();
 }
 
 function getRandomEmoji() {
@@ -85,8 +135,8 @@ function showView(viewName) {
 }
 
 // --- SETTINGS MODAL ---
-window.openSettings = function () {
-    // Refresh inputs from state in case of inconsistency
+function openSettings() {
+    // Refresh inputs from state
     document.getElementById('rule-win').value = state.rules.win;
     document.getElementById('rule-second').value = state.rules.second;
     document.getElementById('rule-pp-hidden').value = state.rules.ppHidden;
@@ -96,15 +146,11 @@ window.openSettings = function () {
     document.getElementById('settings-modal').classList.remove('hidden');
 }
 
-window.closeSettings = function () {
+function closeSettings() {
     document.getElementById('settings-modal').classList.add('hidden');
-    // Re-render leaderboard in case rules changed retroactively
-    if (state.players.length > 0) {
-        renderLeaderboard();
-    }
 }
 
-window.updateRules = function () {
+function updateRules() {
     state.rules.win = parseFloat(document.getElementById('rule-win').value) || 0;
     state.rules.second = parseFloat(document.getElementById('rule-second').value) || 0;
     state.rules.ppHidden = parseFloat(document.getElementById('rule-pp-hidden').value) || 0;
@@ -125,7 +171,7 @@ function addPlayer() {
         });
         input.value = '';
         saveState();
-        renderPlayersList();
+        // UI update handled by listener
     }
 }
 
@@ -138,7 +184,6 @@ function quickAddPlayer() {
             avatar: getRandomEmoji()
         });
         saveState();
-        renderLeaderboard();
         alert(`${name} ajouté!`);
     }
 }
@@ -147,12 +192,12 @@ function removePlayer(id) {
     if (confirm("Supprimer ce joueur ?")) {
         state.players = state.players.filter(p => p.id !== id);
         saveState();
-        renderPlayersList();
     }
 }
 
 function renderPlayersList() {
     const container = document.getElementById('players-list');
+    if (!container) return;
     container.innerHTML = state.players.map(p => `
         <div class="player-chip">
             <div class="chip-avatar">${p.avatar}</div>
@@ -165,10 +210,10 @@ function renderPlayersList() {
 // --- GAME LOGIC ---
 function startParty() {
     if (state.players.length < 2) return alert("Il faut au moins 2 joueurs !");
-
     // Initial save of default rules if someone just clicks start without opening settings
     saveState();
 
+    // Explicitly go to dashboard since we removed auto-redirect
     showView('dashboard');
     renderLeaderboard();
     renderHistory();
@@ -180,12 +225,22 @@ function prepareNewGame() {
 
     // UI Reset
     document.getElementById('custom-team-count').value = '';
-    setTeamCount(2); // Default to 2
+
+    // We update local state, but don't save yet to avoid syncing incomplete game prep to everyone?
+    // Actually, "Prepare" is usually local until "Start". 
+    // BUT, if we want shared prep, we need to save state.
+    // Let's keep prep local for now until generate teams, OR update state.
+    // Current app architecture stores everything in `state`. So `state.currentGame` is shared.
+    // If Player A clicks "New Game", Player B should see "New Game" view?
+    // The current architecture doesn't sync "Current View". It syncs "Data".
+    // So if I click "New Game", I see it. Other players don't see it unless I update `state.currentGame`.
+    // Let's just switch view locally.
 
     showView('newGame');
+    setTeamCount(2); // Local UI update
 }
 
-window.setTeamCount = (count) => {
+function setTeamCount(count) {
     const validCount = Math.max(2, parseInt(count));
 
     // Update active button state
@@ -199,19 +254,21 @@ window.setTeamCount = (count) => {
 
     // If count matches a preset, clear custom input, otherwise value is set by custom input
     const customInput = document.getElementById('custom-team-count');
-    if ([2, 3, 4, 5].includes(validCount)) {
-        if (parseInt(customInput.value) !== validCount) {
-            customInput.value = '';
+    if (customInput) {
+        if ([2, 3, 4, 5].includes(validCount)) {
+            if (parseInt(customInput.value) !== validCount) {
+                customInput.value = '';
+            }
+        } else {
+            // Deselect all presets if manual number is not in presets
+            document.querySelectorAll('.btn-preset').forEach(btn => btn.classList.remove('active'));
         }
-    } else {
-        // Deselect all presets if manual number is not in presets
-        document.querySelectorAll('.btn-preset').forEach(btn => btn.classList.remove('active'));
     }
 
     generateTeams(validCount);
 }
 
-window.setCustomTeamCount = (val) => {
+function setCustomTeamCount(val) {
     if (!val) return;
     setTeamCount(val);
 }
@@ -232,16 +289,25 @@ function generateTeams(numTeams) {
         teams[index % numTeams].playerIds.push(p.id);
     });
 
+    // Determine if we should save immediately. 
+    // If we save, everyone sees these teams in "New Game" if they are on that screen?
+    // Let's save so everyone sees the teams being formed.
     state.currentGame = { name: '', teams: teams };
-    renderTempTeams();
+    saveState();
+
+    renderTempTeams(); // Also calling this here for instant local feedback before sync roundtrip
 }
+
 // --- DRAG AND DROP & MOBILE TAP & TOUCH ---
 let selectedPlayerId = null;
-let touchDragItem = null; // { pid, element, ghost, offsetX, offsetY }
+let touchDragItem = null;
 
 function renderTempTeams() {
+    if (!state.currentGame || !state.currentGame.teams) return;
     const teams = state.currentGame.teams;
     const container = document.getElementById('temp-teams-container');
+    if (!container) return;
+
     container.innerHTML = teams.map(t => `
         <div class="team-preview drop-zone" 
              ondragover="allowDrop(event, this)" 
@@ -272,35 +338,35 @@ function renderTempTeams() {
 }
 
 // TAP LOGIC
-window.togglePlayerSelection = (pid) => {
+function togglePlayerSelection(pid) {
     if (selectedPlayerId === pid) {
         selectedPlayerId = null;
     } else {
         selectedPlayerId = pid;
     }
     renderTempTeams();
-};
+}
 
-window.handleTeamClick = (teamId) => {
+function handleTeamClick(teamId) {
     if (selectedPlayerId) {
         movePlayerToTeam(selectedPlayerId, teamId);
         selectedPlayerId = null;
         renderTempTeams();
     }
-};
+}
 
 // DESKTOP DRAG & DROP
-window.allowDrop = (ev, el) => {
+function allowDrop(ev, el) {
     ev.preventDefault();
     el.classList.add('drag-over');
 }
-window.leaveDrop = (el) => {
+function leaveDrop(el) {
     el.classList.remove('drag-over');
 }
-window.dragStart = (ev, pid) => {
+function dragStart(ev, pid) {
     ev.dataTransfer.setData("playerId", pid);
 }
-window.dropPlayer = (ev, teamId) => {
+function dropPlayer(ev, teamId) {
     ev.preventDefault();
     const el = ev.currentTarget;
     el.classList.remove('drag-over');
@@ -310,20 +376,16 @@ window.dropPlayer = (ev, teamId) => {
 }
 
 // MOBILE TOUCH DRAG LOGIC
-window.handleTouchStart = (e, pid) => {
-    // Prevent default to stop scrolling while dragging? 
-    // Only if we intend to drag. Let's try to detect drag vs tap.
-    // For now, simple direct logic:
+function handleTouchStart(e, pid) {
     const touch = e.touches[0];
     const target = e.currentTarget;
 
-    // Create Ghost
     const ghost = target.cloneNode(true);
     ghost.style.position = 'fixed';
     ghost.style.left = (touch.clientX - 20) + 'px';
     ghost.style.top = (touch.clientY - 20) + 'px';
     ghost.style.opacity = '0.8';
-    ghost.style.pointerEvents = 'none'; // Important for elementFromPoint
+    ghost.style.pointerEvents = 'none';
     ghost.style.zIndex = '9999';
     ghost.style.transform = 'scale(1.1)';
     document.body.appendChild(ghost);
@@ -333,25 +395,20 @@ window.handleTouchStart = (e, pid) => {
         ghost: ghost
     };
 
-    // Slight vibration if supported
     if (navigator.vibrate) navigator.vibrate(50);
-};
+}
 
-window.handleTouchMove = (e) => {
+function handleTouchMove(e) {
     if (!touchDragItem) return;
-    e.preventDefault(); // Stop scrolling
+    e.preventDefault();
     const touch = e.touches[0];
     touchDragItem.ghost.style.left = (touch.clientX - 20) + 'px';
     touchDragItem.ghost.style.top = (touch.clientY - 20) + 'px';
+}
 
-    // Highlight drop zones?
-    // Optional optimization: check elementFromPoint here
-};
-
-window.handleTouchEnd = (e) => {
+function handleTouchEnd(e) {
     if (!touchDragItem) return;
 
-    // Detect drop target
     const touch = e.changedTouches[0];
     const el = document.elementFromPoint(touch.clientX, touch.clientY);
     const dropZone = el ? el.closest('.drop-zone') : null;
@@ -362,32 +419,44 @@ window.handleTouchEnd = (e) => {
         renderTempTeams();
     }
 
-    // Cleanup
     if (touchDragItem.ghost) touchDragItem.ghost.remove();
     touchDragItem = null;
-};
+}
 
 function movePlayerToTeam(pid, targetTeamId) {
-    // Remove from old team
     state.currentGame.teams.forEach(t => {
         t.playerIds = t.playerIds.filter(id => id !== pid);
     });
-    // Add to new team
     const targetTeam = state.currentGame.teams.find(t => t.id === targetTeamId);
     if (targetTeam) targetTeam.playerIds.push(pid);
+    saveState(); // SYNC TEAM MOVE
 }
 
 // --- START GAME ---
 function startGame() {
-    // Check for empty teams?? User might want uneven teams.
     const emptyTeam = state.currentGame.teams.find(t => t.playerIds.length === 0);
     if (emptyTeam && !confirm(`L'équipe "${emptyTeam.name}" est vide. Continuer ?`)) return;
 
     const nameInput = document.getElementById('game-name-input').value.trim();
     state.currentGame.name = nameInput || `Jeu #${state.history.length + 1}`;
-    document.getElementById('current-game-title').innerText = state.currentGame.name;
 
+    // We don't save yet, will be saved at end of func
+
+    state.editingGameIndex = -1; // New game
+
+    saveState();
+
+    // Everyone should technically see this?
+    // Current app doesn't force view sync. So only person who clicked start goes to progress.
+    showView('gameProgress');
+    renderLiveTeams();
+}
+
+function renderLiveTeams() {
+    document.getElementById('current-game-title').innerText = state.currentGame.name;
     const liveContainer = document.getElementById('live-teams-display');
+    if (!liveContainer) return;
+
     liveContainer.innerHTML = state.currentGame.teams.map(t => `
         <div class="team-preview">
             <strong>${t.name}</strong> : <br>
@@ -397,17 +466,13 @@ function startGame() {
     }).join('')}
         </div>
     `).join('');
-
-    saveState();
-    showView('gameProgress');
 }
+
 
 function editHistoryGame(index) {
     const gameRecord = state.history[index];
     state.editingGameIndex = index;
-    state.currentGame = { ...gameRecord }; // Deep clone needed ideally but shallow ok for single edit flow usually
-    // Deep clone teams to avoid mutating history directly if cancelled? 
-    // Simplified: we directly edit clones and save on validate.
+    state.currentGame = { ...gameRecord };
     state.currentGame.teams = JSON.parse(JSON.stringify(gameRecord.teams));
     state.currentGame.results = JSON.parse(JSON.stringify(gameRecord.results));
 
@@ -486,7 +551,6 @@ function prepareScoring(isEditing = false) {
                     <div class="finders-list">
                         ${teamPlayers.map(p => {
             const isPP = (p.id == defaultPPId);
-            // If user is PP, hide the option
             return `
                             <label class="checkbox-item ${isPP ? 'hidden' : ''}">
                                 <input type="checkbox" class="pp-finder-checkbox" value="${p.id}" 
@@ -503,7 +567,7 @@ function prepareScoring(isEditing = false) {
     showView('scoring');
 }
 
-window.updatePPFinder = (select, teamId) => {
+function updatePPFinder(select, teamId) {
     const ppId = select.value;
     const container = document.getElementById(`finder-box-${teamId}`);
     const checkboxes = container.querySelectorAll('.pp-finder-checkbox');
@@ -519,16 +583,16 @@ window.updatePPFinder = (select, teamId) => {
             label.classList.remove('hidden'); // Show
         }
     });
-};
+}
 
-window.selectTeam = (btn, type, id) => {
+function selectTeam(btn, type, id) {
     btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     if (type === 'winner') scoringState.winnerId = id;
     if (type === 'second') scoringState.secondId = id;
-};
+}
 
-window.setFound = (btn, teamId, found) => {
+function setFound(btn, teamId, found) {
     const group = btn.parentElement;
     group.querySelectorAll('.toggle-opt').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -541,10 +605,9 @@ window.setFound = (btn, teamId, found) => {
         finderBox.classList.add('hidden');
         finderBox.dataset.found = "false";
     }
-};
+}
 
 function validateScores() {
-    console.log("Validating scores...");
     try {
         if (!scoringState.winnerId) return alert("Sélectionnez l'équipe gagnante !");
 
@@ -553,9 +616,7 @@ function validateScores() {
         let error = false;
 
         teams.forEach(team => {
-            // Look up element
             const teamEl = document.getElementById(`pp-group-${team.id}`);
-            // Skip empty teams
             if (!teamEl || team.playerIds.length === 0) return;
 
             const ppSelect = teamEl.querySelector('.pp-who-select');
@@ -600,9 +661,10 @@ function validateScores() {
             state.history.push(completeGameRecord);
         }
 
-        saveState();
         state.currentGame = null;
         state.editingGameIndex = -1;
+
+        saveState();
 
         renderLeaderboard();
         renderHistory();
@@ -617,8 +679,6 @@ function validateScores() {
 // --- SCORE ENGINE ---
 function calculateTotalScore(playerId) {
     let score = 0;
-
-    // SAFEGUARDS FOR RULES
     const R = state.rules || { win: 3, second: 1, ppHidden: 5, ppFound: 2, finder: 1 };
 
     state.history.forEach(game => {
@@ -627,24 +687,18 @@ function calculateTotalScore(playerId) {
         if (!team) return;
 
         const teamId = team.id;
-
-        // Team Pts
         if (teamId === results.winnerId) score += R.win;
         else if (teamId === results.secondId) score += R.second;
 
-        // PP Pts
         const ppData = results.ppData[teamId];
         if (!ppData) return;
 
         const isWinningTeam = (teamId === results.winnerId);
-        // Rule: If win, no PP bonus/malus for the PP itself
         if (!isWinningTeam) {
             if (ppData.ppId == playerId) {
                 if (!ppData.found) score += R.ppHidden;
                 else score += R.ppFound;
             }
-            // Finder bonus IS applicable even if their team lost (common sense, or keep current rule)
-            // User did not specify Finder rule for winning team, assumed constant.
             if (ppData.found) {
                 const finders = ppData.finderIds || (ppData.finderId ? [ppData.finderId] : []);
                 if (finders.includes(playerId)) score += R.finder;
@@ -668,20 +722,15 @@ function renderLeaderboard() {
 
     const sorted = playersWithScores.sort((a, b) => b.score - a.score);
 
-    // Split Top 3 vs Rest
     const top3 = sorted.slice(0, 3);
     const rest = sorted.slice(3);
 
     // PODIUM RENDER
-    // Order visually for pyramid: #2, #1, #3
     let podiumHtml = '';
     if (top3.length > 0) {
-        // Prepare slots (if less than 3 players, handle gracefully)
         const p1 = top3[0];
         const p2 = top3[1];
         const p3 = top3[2];
-
-        // Rank 2 (Left)
         if (p2) {
             podiumHtml += `
                 <div class="podium-item rank-2">
@@ -693,8 +742,6 @@ function renderLeaderboard() {
                 </div>
             `;
         }
-
-        // Rank 1 (Center)
         if (p1) {
             podiumHtml += `
                 <div class="podium-item rank-1">
@@ -707,8 +754,6 @@ function renderLeaderboard() {
                 </div>
             `;
         }
-
-        // Rank 3 (Right)
         if (p3) {
             podiumHtml += `
                 <div class="podium-item rank-3">
@@ -723,7 +768,6 @@ function renderLeaderboard() {
     }
     podium.innerHTML = podiumHtml;
 
-    // LIST RENDER
     list.innerHTML = rest.map((p, idx) => `
         <div class="leader-item rank-${idx + 4}">
             <div class="leader-rank">#${idx + 4}</div>
@@ -757,39 +801,24 @@ function renderHistory() {
 }
 
 
-// --- NAVIGATION ---
-function showView(viewName) {
-    if (!views[viewName]) {
-        console.error(`View '${viewName}' not found`);
-        return;
-    }
-    Object.values(views).forEach(el => el.classList.remove('active'));
-    views[viewName].classList.add('active');
-}
-
-// ... (Rest of modal logic) ...
-
 // --- RESET LOGIC ---
-window.resetApp = function () {
+function resetApp() {
     if (confirm("⚠️ Tout effacer et recommencer la soirée à zéro ?")) {
-        localStorage.removeItem(STORAGE_KEY);
+        set(DB_REF, null);
         location.reload();
     }
 }
 
 // --- EVENT LISTENERS ---
 function setupEventListeners() {
-    // Helper to safely add listener
     const safeListen = (id, event, handler) => {
         const el = document.getElementById(id);
         if (el) el.addEventListener(event, handler);
-        else console.warn(`Element ${id} not found for event ${event}`);
     };
 
     safeListen('new-game-btn', 'click', prepareNewGame);
     safeListen('quick-add-player-btn', 'click', quickAddPlayer);
 
-    // Fix: Use currentTarget to ensure we get the button's dataset, not the inner span's
     document.querySelectorAll('.back-btn').forEach(b => {
         b.addEventListener('click', (e) => {
             const target = e.currentTarget.dataset.target;
@@ -799,8 +828,6 @@ function setupEventListeners() {
 
     safeListen('add-player-btn', 'click', addPlayer);
     safeListen('start-party-btn', 'click', startParty);
-
-    // Slider listeners removed
 
     safeListen('generate-teams-btn', 'click', () => {
         let count = 2;
@@ -819,18 +846,35 @@ function setupEventListeners() {
     safeListen('reset-app-btn', 'click', resetApp);
 }
 
+// --- EXPOSE TO WINDOW ---
+window.openSettings = openSettings;
+window.closeSettings = closeSettings;
+window.updateRules = updateRules;
+window.removePlayer = removePlayer;
+window.setTeamCount = setTeamCount;
+window.setCustomTeamCount = setCustomTeamCount;
+window.editHistoryGame = editHistoryGame;
+
+// Drag & Drop / Mobile
+window.togglePlayerSelection = togglePlayerSelection;
+window.handleTeamClick = handleTeamClick;
+window.allowDrop = allowDrop;
+window.leaveDrop = leaveDrop;
+window.dragStart = dragStart;
+window.dropPlayer = dropPlayer;
+window.handleTouchStart = handleTouchStart;
+window.handleTouchMove = handleTouchMove;
+window.handleTouchEnd = handleTouchEnd;
+window.resetApp = resetApp;
+
+// Scoring
+window.selectTeam = selectTeam;
+window.updatePPFinder = updatePPFinder;
+window.setFound = setFound;
+
 // --- UTILS ---
 function saveState() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
-
-function loadState() {
-    const s = localStorage.getItem(STORAGE_KEY);
-    if (s) {
-        state = JSON.parse(s);
-        // Ensure v3 structure (history array)
-        if (!state.history) state.history = [];
-    }
+    set(DB_REF, state);
 }
 
 // Start

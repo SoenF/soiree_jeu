@@ -794,8 +794,14 @@ input[type=number] {
     display: none;
 }
 
+
 .pulsing {
     animation: pulse 1.5s infinite;
+}
+
+.bottom-action {
+    margin-top: 3rem;
+    padding-bottom: 2rem;
 }
 
 @keyframes pulse {
