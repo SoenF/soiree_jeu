@@ -176,30 +176,45 @@
                     <h3>Paramètres</h3>
                     <button class="close-modal-btn" onclick="closeSettings()">×</button>
                 </div>
-                <div class="config-content">
-                    <div class="config-item">
-                        <label>🥇 Victoire Équipe</label>
-                        <input type="number" id="rule-win" onchange="updateRules()">
-                    </div>
-                    <div class="config-item">
-                        <label>🥈 2ème place</label>
-                        <input type="number" id="rule-second" onchange="updateRules()">
-                    </div>
-                    <div class="config-item">
-                        <label>🍏 Bonus PP cachée</label>
-                        <input type="number" id="rule-pp-hidden" onchange="updateRules()">
-                    </div>
-                    <div class="config-item">
-                        <label>🤢 Malus PP trouvée</label>
-                        <input type="number" id="rule-pp-found" onchange="updateRules()">
-                    </div>
-                    <div class="config-item">
-                        <label>🕵️ Détective (trouveur)</label>
-                        <input type="number" id="rule-finder" onchange="updateRules()">
+
+                <div class="modal-tabs">
+                    <button class="tab-btn active" onclick="switchSettingsTab('config')">Configuration</button>
+                    <button class="tab-btn" onclick="switchSettingsTab('rules')">Règles du Jeu</button>
+                </div>
+
+                <div id="tab-config" class="tab-content active">
+                    <div class="config-content">
+                        <div class="config-item">
+                            <label>🥇 Victoire Équipe</label>
+                            <input type="number" id="rule-win" onchange="updateRules()">
+                        </div>
+                        <div class="config-item">
+                            <label>🥈 2ème place</label>
+                            <input type="number" id="rule-second" onchange="updateRules()">
+                        </div>
+                        <div class="config-item">
+                            <label>🍏 Bonus PP cachée</label>
+                            <input type="number" id="rule-pp-hidden" onchange="updateRules()">
+                        </div>
+                        <div class="config-item">
+                            <label>🤢 Malus PP trouvée</label>
+                            <input type="number" id="rule-pp-found" onchange="updateRules()">
+                        </div>
+                        <div class="config-item">
+                            <label>🕵️ Détective (trouveur)</label>
+                            <input type="number" id="rule-finder" onchange="updateRules()">
+                        </div>
                     </div>
                 </div>
+
+                <div id="tab-rules" class="tab-content">
+                    <div id="rules-summary-container" class="rules-summary-list">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
                 <div style="margin-top:2rem; text-align:center;">
-                    <button class="btn primary" onclick="closeSettings()">Valider</button>
+                    <button class="btn primary" onclick="closeSettings()">Fermer</button>
                 </div>
             </div>
         </div>

@@ -833,3 +833,98 @@ input[type=number] {
 .history-item .winner {
     color: var(--gold);
 }
+
+/* SETTINGS TABS */
+.modal-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+}
+
+.tab-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+}
+
+.tab-btn.active {
+    color: var(--text-main);
+    border-bottom-color: var(--primary);
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* RULES SUMMARY LIST */
+.rules-summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.rule-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.8rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border-left: 3px solid var(--border);
+}
+
+.rule-row.win {
+    border-left-color: var(--gold);
+}
+
+.rule-row.lose {
+    border-left-color: var(--text-muted);
+}
+
+.rule-row.pp-hidden {
+    border-left-color: var(--primary);
+}
+
+.rule-row.pp-found {
+    border-left-color: #e74c3c;
+}
+
+.rule-row.detective {
+    border-left-color: var(--accent);
+}
+
+.rule-desc {
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.rule-points {
+    font-weight: 900;
+    font-size: 1.2rem;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    min-width: 50px;
+    text-align: center;
+}
+
+.rule-sub {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: normal;
+    display: block;
+    margin-top: 2px;
+}

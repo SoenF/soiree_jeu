@@ -679,9 +679,10 @@ function validateScores() {
 }
 
 // --- SCORE ENGINE ---
+// --- SCORE ENGINE ---
 function calculateTotalScore(playerId) {
     let score = 0;
-    const R = state.rules || { win: 3, second: 1, ppHidden: 5, ppFound: 2, finder: 1 };
+    const R = state.rules || { win: 3, second: 1, ppHidden: 5, ppFound: -2, finder: 1 };
 
     state.history.forEach(game => {
         const { teams, results } = game;
@@ -689,21 +690,46 @@ function calculateTotalScore(playerId) {
         if (!team) return;
 
         const teamId = team.id;
-        if (teamId === results.winnerId) score += R.win;
-        else if (teamId === results.secondId) score += R.second;
+        const ppData = results.ppData ? results.ppData[teamId] : null;
 
-        const ppData = results.ppData[teamId];
-        if (!ppData) return;
+        // Check if player is the PP for this game/team
+        const isPP = (ppData && ppData.ppId == playerId);
 
+        // Check if team won
         const isWinningTeam = (teamId === results.winnerId);
-        if (!isWinningTeam) {
-            if (ppData.ppId == playerId) {
-                if (!ppData.found) score += R.ppHidden;
-                else score += R.ppFound;
+
+        if (isPP) {
+            // 🍎 ROLE: POMME POURRIE
+            if (isWinningTeam) {
+                // Rule: "quand une équipe gagne la pomme pourrie ne gagne pas de points et elle nen perd pas non plus"
+                // Sabotage failed, but no malus specified for winning, just 0 points.
+                score += 0;
+            } else {
+                // Team Lost. 
+                // Rule: "ne gagne des points que si son équipe perd et que personne ne la trouve"
+                // Rule: "perd des points si son équipe perd et quelle a été trouvée"
+                if (ppData.found) {
+                    score += R.ppFound; // Malus (e.g. -2)
+                } else {
+                    score += R.ppHidden; // Bonus (e.g. +5)
+                }
+                // Note: PP does NOT get R.second points.
             }
-            if (ppData.found) {
+        } else {
+            // 👤 ROLE: TEAM MEMBER (Standard)
+            if (isWinningTeam) {
+                score += R.win;
+            } else if (teamId === results.secondId) {
+                score += R.second;
+            }
+
+            // Detective Bonus
+            // Applies regardless of win/loss. If you identify the traitor within your team, you get points.
+            if (ppData && ppData.found) {
                 const finders = ppData.finderIds || (ppData.finderId ? [ppData.finderId] : []);
-                if (finders.includes(playerId)) score += R.finder;
+                if (finders.includes(playerId)) {
+                    score += R.finder;
+                }
             }
         }
     });
@@ -848,6 +874,89 @@ function setupEventListeners() {
     safeListen('reset-app-btn', 'click', resetApp);
 }
 
+// --- SETTINGS TABS ---
+function switchSettingsTab(tabName) {
+    // Update buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.innerText.includes(tabName === 'config' ? 'Configuration' : 'Règles')) {
+            btn.classList.add('active');
+        }
+    });
+
+    // Update content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+
+    if (tabName === 'rules') {
+        renderRulesSummary();
+    }
+}
+
+function renderRulesSummary() {
+    const container = document.getElementById('rules-summary-container');
+    if (!container) return;
+
+    const R = state.rules || { win: 3, second: 1, ppHidden: 5, ppFound: -2, finder: 1 };
+
+    container.innerHTML = `
+        <div class="rule-row win">
+            <div class="rule-desc">
+                <strong>Victoire d'Équipe</strong>
+                <span class="rule-sub">Si mon équipe gagne le mini-jeu.</span>
+            </div>
+            <div class="rule-points">+${R.win}</div>
+        </div>
+
+        <div class="rule-row lose">
+            <div class="rule-desc">
+                <strong>2ème Place</strong>
+                <span class="rule-sub">Si mon équipe perd mais finit 2ème.</span>
+            </div>
+            <div class="rule-points">+${R.second}</div>
+        </div>
+
+        <div class="rule-row pp-hidden">
+            <div class="rule-desc">
+                <strong>🍎 Pomme Pourrie (Cachée)</strong>
+                <span class="rule-sub">Je suis PP, mon équipe PERD, et personne ne m'a trouvé.</span>
+            </div>
+            <div class="rule-points">+${R.ppHidden}</div>
+        </div>
+
+        <div class="rule-row pp-found">
+            <div class="rule-desc">
+                <strong>🤢 Pomme Pourrie (Trouvée)</strong>
+                <span class="rule-sub">Je suis PP, mon équipe PERD, et j'ai été démasqué !</span>
+            </div>
+            <div class="rule-points">${R.ppFound}</div>
+        </div>
+
+        <div class="rule-row fail"> 
+             <div class="rule-desc">
+                <strong>🍎 Pomme Pourrie (Échec Sabotage)</strong>
+                <span class="rule-sub">Je suis PP et mon équipe GAGNE quand même.</span>
+            </div>
+            <div class="rule-points">0</div>
+        </div>
+
+        <div class="rule-row detective">
+            <div class="rule-desc">
+                <strong>🕵️ Détective</strong>
+                <span class="rule-sub">J'ai identifié la Pomme Pourrie de mon équipe.</span>
+            </div>
+            <div class="rule-points">+${R.finder}</div>
+        </div>
+    `;
+}
+
+// --- UTILS ---
+function saveState() {
+    set(DB_REF, state);
+}
+
 // --- EXPOSE TO WINDOW ---
 window.openSettings = openSettings;
 window.closeSettings = closeSettings;
@@ -856,6 +965,7 @@ window.removePlayer = removePlayer;
 window.setTeamCount = setTeamCount;
 window.setCustomTeamCount = setCustomTeamCount;
 window.editHistoryGame = editHistoryGame;
+window.switchSettingsTab = switchSettingsTab; // ADDED
 
 // Drag & Drop / Mobile
 window.togglePlayerSelection = togglePlayerSelection;
@@ -873,11 +983,6 @@ window.resetApp = resetApp;
 window.selectTeam = selectTeam;
 window.updatePPFinder = updatePPFinder;
 window.setFound = setFound;
-
-// --- UTILS ---
-function saveState() {
-    set(DB_REF, state);
-}
 
 // Start
 init();
