@@ -92,6 +92,7 @@ function updateUI() {
 
     if (state.players.length === 0) {
         showView('setup');
+        renderPlayersList();
     } else {
         // If we represent a non-empty state, we update lists.
         // We DO NOT auto-redirect to dashboard anymore, to allow adding multiple players.
@@ -190,7 +191,8 @@ function quickAddPlayer() {
 
 function removePlayer(id) {
     if (confirm("Supprimer ce joueur ?")) {
-        state.players = state.players.filter(p => p.id !== id);
+        // Use String() to ensure we match even if types defer (string vs number)
+        state.players = state.players.filter(p => String(p.id) !== String(id));
         saveState();
     }
 }
@@ -202,7 +204,7 @@ function renderPlayersList() {
         <div class="player-chip">
             <div class="chip-avatar">${p.avatar}</div>
             <div class="chip-name">${p.name}</div>
-            <div class="remove-btn" onclick="removePlayer(${p.id})">×</div>
+            <div class="remove-btn" onclick="removePlayer('${p.id}')">×</div>
         </div>
     `).join('');
 }
